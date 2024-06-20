@@ -1,0 +1,39 @@
+[project]
+name = "stimpyp"
+version = "0.0.0"
+requires-python = ">=3.9"
+description = "utilities parser for the Stimpy module"
+authors = [
+    { name = "Yu-Ting Wei", email = "ytsimon2004@gmail.com" }
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+keywords = ["Neuroscience", "visual neuroscience", "virtual reality"]
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    'Intended Audience :: Science/Research',
+    "Typing :: Typed",
+]
+
+dynamic = ['dependencies']
+
+[project.urls]
+Homepage = "https://github.com/ytsimon2004/stimpyp"
+Documentation = "https://neuralib.readthedocs.io/en/latest/index.html"
+Repository = "https://github.com/ytsimon2004/stimpyp"
+Issues = "https://github.com/ytsimon2004/stimpyp/issues"
+
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.dynamic.optional-dependencies]
+doc = { file = ["requirements-document.txt"] }
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0"]
