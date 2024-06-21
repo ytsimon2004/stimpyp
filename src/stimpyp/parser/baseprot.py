@@ -8,8 +8,8 @@ import numpy as np
 import polars as pl
 from polars import ColumnNotFoundError
 
-from neuralib.stimpy import STIMPY_SOURCE_VERSION
 from neuralib.util.util_verbose import fprint, printdf
+from stimpyp.parser import STIMPY_SOURCE_VERSION
 
 __all__ = ['AbstractStimProtocol']
 

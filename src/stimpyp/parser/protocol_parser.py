@@ -6,7 +6,7 @@ from typing import Any
 
 import polars as pl
 
-from neuralib.stimpy.math_eval import evaluate_string
+from stimpyp.parser.math_eval import evaluate_string
 
 __all__ = [
     'EmptyProtocolError',

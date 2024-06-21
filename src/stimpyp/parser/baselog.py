@@ -154,7 +154,7 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
         """
         get protocol (TypeVar ``P``)
 
-        :return: :class:`~neuralib.stimpy.baseprot.AbstractStimProtocol()`
+        :return: :class:`~stimpyp.parser.baseprot.AbstractStimProtocol()`
         """
         pass
 
@@ -272,7 +272,7 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
     def stimlog_data(self) -> S:
         """get stimlog (TypeVar ``S``)
 
-        :return: :class:`~neuralib.stimpy.baselog.StimlogBase()`
+        :return: :class:`~stimpyp.parser.baselog.StimlogBase()`
         """
         pass
 
@@ -420,5 +420,5 @@ class AbstractStimTimeProfile(Generic[S], metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_time_interval(self) -> np.ndarray:
-        """(N, 2) with (start, end). suppose the same as :attr:`neuralib.stimpy.baselog.StimlogBase.stimulus_segment`"""
+        """(N, 2) with (start, end). suppose the same as :attr:`stimpyp.parser.baselog.StimlogBase.stimulus_segment`"""
         pass

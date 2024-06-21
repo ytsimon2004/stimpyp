@@ -142,7 +142,7 @@ class LabCamlog(AbstractCamlog):
                         cam_name: CAMERA_TYPE = '1P_cam') -> np.ndarray:
         """Interpolate cameralog frames to those recorded by pyvstim.
 
-        :param log: :class:`~neuralib.stimpy.baselog.Baselog`
+        :param log: :class:`~stimpyp.parser.baselog.Baselog`
         :param cam_name: camera name
         :return: 1D camera time array in sec
         """

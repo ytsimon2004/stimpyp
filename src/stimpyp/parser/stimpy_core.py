@@ -18,6 +18,7 @@ from .stimulus import StimPattern
 from .util import unfold_stimuli_condition, try_casting_number
 
 __all__ = ['RiglogData',
+           'Stimlog',
            'StimpyProtocol']
 
 

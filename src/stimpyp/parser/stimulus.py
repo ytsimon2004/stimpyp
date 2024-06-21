@@ -6,7 +6,7 @@ import numpy as np
 from typing_extensions import TypeAlias, Self
 
 if TYPE_CHECKING:
-    from neuralib.stimpy.baselog import R
+    from stimpyp.parser.baselog import R
 
 __all__ = [
     'Degree',
@@ -50,7 +50,7 @@ class StimPattern(NamedTuple):
         """
         init from Baselog children class
 
-        :param rig: :class:`~neuralib.stimpy.baselog.Baselog`
+        :param rig: :class:`~stimpyp.parser.baselog.Baselog`
         :return: :class:`StimPattern`
         """
         return rig.stimlog_data().get_stim_pattern()
