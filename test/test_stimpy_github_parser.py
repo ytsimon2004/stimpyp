@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
-from neuralib.stimpy import RiglogData
+
+from stimpyp.parser import RiglogData
 
 
 class TestRiglogParser(unittest.TestCase):
