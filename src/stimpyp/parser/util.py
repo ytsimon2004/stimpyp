@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import polars as pl
+
+from neuralib.util.util_type import PathLike
+
 __all__ = ['try_casting_number',
-           'unfold_stimuli_condition']
+           'unfold_stimuli_condition',
+           'get_dataframe_from_prot']
 
 
 def try_casting_number(value: str, do_eval: bool = False) -> float | int | str:
@@ -60,3 +65,33 @@ def unfold_stimuli_condition(parts: list[str]) -> list[list]:
 
         ret = [ret]
     return ret
+
+
+def get_dataframe_from_prot(file: PathLike, stim_type: PathLike) -> pl.DataFrame:
+    """
+    Extract dataframe from the .prot file
+
+    :param file: `.prot` stimpy file
+    :param stim_type: stimulus type for parsing the dataframe
+    :return:
+    """
+
+    with open(file, 'r') as file:
+        lines = file.readlines()
+        start_index = lines.index(f'{stim_type} = \n') + 1
+        end_index = start_index
+
+        while end_index < len(lines) and lines[end_index].strip() != '':
+            end_index += 1
+
+    #
+    data = [
+        line.strip().split()
+        for line in lines[start_index:end_index]
+    ]
+
+    #
+    df = pl.DataFrame(data[1:], orient='row')
+    df.columns = data[0]
+
+    return df
