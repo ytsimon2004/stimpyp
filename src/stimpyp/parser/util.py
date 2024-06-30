@@ -78,7 +78,12 @@ def get_dataframe_from_prot(file: PathLike, stim_type: PathLike) -> pl.DataFrame
 
     with open(file, 'r') as file:
         lines = file.readlines()
-        start_index = lines.index(f'{stim_type} = \n') + 1
+
+        try:
+            start_index = lines.index(f'{stim_type} = \n') + 1
+        except ValueError:
+            raise RuntimeError(f'pattern not found: {stim_type}')
+
         end_index = start_index
 
         while end_index < len(lines) and lines[end_index].strip() != '':
