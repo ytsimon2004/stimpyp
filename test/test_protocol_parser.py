@@ -87,7 +87,7 @@ class TestProtocolParser(unittest.TestCase):
         self.assertEqual(evaluated_dict["var5"], [1, 2])
         self.assertEqual(evaluated_dict["var6"], {"v1": 1})
         df = pl.DataFrame(data=dict(dur=[1], ori=[2], other=[3]))
-        assert_frame_equal(evaluated_dict["var7"], df, check_dtype=False)
+        assert_frame_equal(evaluated_dict["var7"], df, check_dtypes=False)
 
     def test_parse_dataframe(self):
         data_frame_line = """\
