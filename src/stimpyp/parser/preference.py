@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import TypedDict, Literal
 
-from neuralib.util.util_type import PathLike
+from neuralib.typing import PathLike
 
 __all__ = [
     'MonitorDict',

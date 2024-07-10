@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from neuralib.util.util_type import PathLike
+from neuralib.typing import PathLike
 
 __all__ = ['try_casting_number',
            'unfold_stimuli_condition',

@@ -7,7 +7,7 @@ from typing import Any, Callable, final
 import numpy as np
 import polars as pl
 
-from neuralib.util.util_type import PathLike
+from neuralib.typing import PathLike
 from neuralib.util.util_verbose import fprint
 from neuralib.util.utils import future_deprecate
 from .baselog import StimlogBase

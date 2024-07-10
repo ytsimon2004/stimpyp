@@ -9,7 +9,7 @@ import polars as pl
 from typing_extensions import Self
 
 from neuralib.plot.figure import plot_figure
-from neuralib.util.util_type import PathLike
+from neuralib.typing import PathLike
 from neuralib.util.util_verbose import fprint
 from .baselog import Baselog, LOG_SUFFIX, StimlogBase
 from .baseprot import AbstractStimProtocol

@@ -7,7 +7,7 @@ from typing import Literal, TypeVar, Generic, cast, TypedDict
 import numpy as np
 import polars as pl
 
-from neuralib.util.util_type import PathLike
+from neuralib.typing import PathLike
 from .event import RigEvent, CamEvent
 from .session import Session, SessionInfo
 from .stimulus import StimPattern
