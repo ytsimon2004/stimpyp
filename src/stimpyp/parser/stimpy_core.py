@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, final, Iterable, TypedDict
+from typing import Any, final, Iterable
 
 import numpy as np
 import polars as pl
@@ -32,10 +32,16 @@ class RiglogData(Baselog):
                  root_path: PathLike,
                  log_suffix: LOG_SUFFIX = '.riglog',
                  diode_offset: bool = True):
+        """
+
+        :param root_path:
+        :param log_suffix:
+        :param diode_offset:
+        """
 
         super().__init__(root_path, log_suffix, diode_offset)
 
-        #
+        # cache
         self.__stimlog_cache: StimlogBase | None = None
         self.__prot_cache: StimpyProtocol | None = None
 
@@ -64,7 +70,7 @@ class RiglogData(Baselog):
         :param session: session name(s)
         :return:
         """
-        dy = self.stimlog_data().session_trials()
+        dy = self.get_stimlog().session_trials()
 
         if isinstance(session, str):
             t0, t1 = dy[session].time
@@ -85,7 +91,7 @@ class RiglogData(Baselog):
     def stimlog_file(self) -> Path:
         return self.riglog_file.with_suffix('.stimlog')
 
-    def stimlog_data(self) -> StimlogBase:
+    def get_stimlog(self) -> StimlogBase:
         if self.__stimlog_cache is None:
             if self.version == 'stimpy-git':
                 from .stimpy_git import StimlogGit
@@ -97,20 +103,11 @@ class RiglogData(Baselog):
 
         return self.__stimlog_cache
 
-    def get_prot_file(self) -> StimpyProtocol:
+    def get_protocol(self) -> StimpyProtocol:
         if self.__prot_cache is None:
-            self.__prot_cache = StimpyProtocol.load(self.stim_prot_file)
+            self.__prot_cache = StimpyProtocol.load(self.prot_file)
 
         return self.__prot_cache
-
-
-class StimConfig(TypedDict, total=False):
-    codes: dict[str, int]
-    """<EVENT_TYPES>:<NUMBER>"""
-    commit_hash: str
-    """git commit hash"""
-    fields: tuple[str, ...]
-    """column repr for the logging"""
 
 
 @final
@@ -134,50 +131,40 @@ class Stimlog(StimlogBase):
     log_info: dict[int, str] = {}
     log_header: dict[int, list[str]] = {}
 
-    # vstim: start from code 10 in .stimlog
-    v_present_time: np.ndarray
-    """time in sec (P,)"""
-    v_stim: np.ndarray
-    """visual stim_index(P,)"""
-    v_trial: np.ndarray
-    """trial index(P,)"""
-    v_photo: np.ndarray
-    """photo diode on-off(P,)"""
-    v_contrast: np.ndarray
-    """stimulus contrast (P,)"""
-    v_ori: np.ndarray
-    """direction (P,)"""
-    v_sf: np.ndarray
-    """spatial frequency (P,)"""
-    v_phase: np.ndarray
-    """phase in time domain (P,)"""
-    v_frame_idx: np.ndarray
-    """frame index (P,)"""
+    # ========================================= #
+    # StateMachine logging (start from code 20) #
+    # ========================================= #
 
-    # state machine: start from code 20 in .stimlog
     s_on_v: np.ndarray
-    """statemachine sync time on v, use for time sync if diode signal not reliable (M,)"""
-    s_present_time: np.ndarray
-    """(M,)"""
-    s_cycle: np.ndarray
-    """(M,)"""
-    s_new_state: np.ndarray
-    """(M,)"""
-    s_old_state: np.ndarray
-    """(M,)"""
-    s_state_elapsed: np.ndarray
-    """(M,)"""
-    s_trial_type: np.ndarray
-    """(M,)"""
+    """statemachine sync time on v, use for time sync if diode signal not reliable. Array[float, M]"""
 
-    def __init__(self, riglog: RiglogData,
+    state_time: np.ndarray
+    """Array[float, M]"""
+
+    state_cycle: np.ndarray
+    """Array[float, M]"""
+
+    state_new_state: np.ndarray
+    """Array[float, M]"""
+
+    state_old_state: np.ndarray
+    """Array[float, M]"""
+
+    state_elapsed: np.ndarray
+    """Array[float, M]"""
+
+    state_trial_type: np.ndarray
+    """Array[float, M]"""
+
+    def __init__(self,
+                 riglog: RiglogData,
                  file_path: PathLike,
                  diode_offset: bool = True,
                  sequential_offset: bool = True):
         """
-        :param riglog: `RiglogData`
+        :param riglog: ``RiglogData``
         :param file_path: stimlog filepath
-        :param diode_offset: if do the diode offset to sync the time to riglog
+        :param diode_offset: If do the diode offset to sync the time to riglog
         :param sequential_offset: do the sequential offset throughout the recording.
         """
 
@@ -191,15 +178,16 @@ class Stimlog(StimlogBase):
         self._reset()
 
     def _reset(self):
-        v_present_time = []
-        v_stim = []
-        v_trial = []
-        v_photo = []
-        v_contrast = []
-        v_ori = []
-        v_sf = []
-        v_phase = []
-        v_stim_idx = []
+        time = []
+        stim_index = []
+        trial_index = []
+        photo_state = []
+        contrast = []
+        ori = []
+        sf = []
+        phase = []
+        frame_index = []
+
         s_on_v = []
         s_present_time = []
         s_cycle = []
@@ -224,33 +212,33 @@ class Stimlog(StimlogBase):
                     code = int(part[0])
 
                     if code == 10:
-                        v_present_time.append(float(part[1]))
+                        time.append(float(part[1]))
 
                         try:
                             stim_value = int(part[2])
                         except ValueError:  # 'None'
                             stim_value = -1
-                        v_stim.append(stim_value)
+                        stim_index.append(stim_value)
 
-                        v_trial.append(int(part[3]))
-                        v_photo.append(int(part[4]))
+                        trial_index.append(int(part[3]))
+                        photo_state.append(int(part[4]))
 
                         if len(part) > 5:
-                            v_contrast.append(float(part[5]))
-                            v_ori.append(int(float(part[6])))
-                            v_sf.append(float(part[7]))
-                            v_phase.append(float(part[8]))
-                            v_stim_idx.append(int(part[9]))
+                            contrast.append(float(part[5]))
+                            ori.append(int(float(part[6])))
+                            sf.append(float(part[7]))
+                            phase.append(float(part[8]))
+                            frame_index.append(int(part[9]))
                         else:
                             # empty list item = -1
-                            v_contrast.append(-1)
-                            v_ori.append(-1)
-                            v_sf.append(-1)
-                            v_phase.append(-1)
-                            v_stim_idx.append(-1)
+                            contrast.append(-1)
+                            ori.append(-1)
+                            sf.append(-1)
+                            phase.append(-1)
+                            frame_index.append(-1)
 
                     elif code == 20:
-                        s_on_v.append(v_present_time[-1])  # sync s to v
+                        s_on_v.append(time[-1])  # sync s to v
                         s_present_time.append(int(part[1]) / 1000)
                         s_cycle.append(int(part[2]))
                         s_new_state.append(int(part[3]))
@@ -264,23 +252,35 @@ class Stimlog(StimlogBase):
                 except BaseException as e:
                     raise RuntimeError(f'line {number}: {line}') from e
 
-        self.v_present_time = np.array(v_present_time)
-        self.v_stim = np.array(v_stim)
-        self.v_trial = np.array(v_trial)
-        self.v_photo = np.array(v_photo)
-        self.v_contrast = np.array(v_contrast)
-        self.v_ori = np.array(v_ori)
-        self.v_sf = np.array(v_sf)
-        self.v_phase = np.array(v_phase)
-        self.v_frame_idx = np.array(v_stim_idx)
+        self.time = np.array(time)
+        self.stim_index = np.array(stim_index)
+        self.trial_index = np.array(trial_index)
+        self.photo_state = np.array(photo_state)
+        self.contrast = np.array(contrast)
+        self.ori = np.array(ori)
+        self.sf = np.array(sf)
+        self.phase = np.array(phase)
+        self.frame_index = np.array(frame_index)
 
+        # special case
+        try:
+            prot = self.riglog_data.get_protocol()
+        except AttributeError:
+            fprint('cannot inferred prot file due to class not has riglog attribute', vtype='warning')
+            pass
+        else:
+            v_start = self.frame_index == 1
+            nr = self.stim_index[v_start]
+            self.tf = prot.tf[nr]
+
+        # state machine
         self.s_on_v = np.array(s_on_v)
-        self.s_present_time = np.array(s_present_time)
-        self.s_cycle = np.array(s_cycle)
-        self.s_new_state = np.array(s_new_state)
-        self.s_old_state = np.array(s_old_state)
-        self.s_state_elapsed = np.array(s_state_elapsed)
-        self.s_trial_type = np.array(s_trial_type)
+        self.state_time = np.array(s_present_time)
+        self.state_cycle = np.array(s_cycle)
+        self.state_new_state = np.array(s_new_state)
+        self.state_old_state = np.array(s_old_state)
+        self.state_elapsed = np.array(s_state_elapsed)
+        self.state_trial_type = np.array(s_trial_type)
 
     def _reset_comment_info(self, line: str):
         if 'CODES' in line:
@@ -306,47 +306,47 @@ class Stimlog(StimlogBase):
 
     @property
     def exp_start_time(self) -> float:
-        tstart = self.v_present_time[0]
+        tstart = self.time[0]
 
         if isinstance(self.time_offset, float):
-            return tstart + self.time_offset
+            return float(tstart + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
-            return tstart + self.time_offset[0]
+            return float(tstart + self.time_offset[0])
 
     @property
     def exp_end_time(self) -> float:
-        tend = self.v_present_time[-1]
+        tend = self.time[-1]
 
         if isinstance(self.time_offset, float):
-            return tend + self.time_offset
+            return float(tend + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
-            return tend + self.time_offset[-1]
+            return float(tend + self.time_offset[-1])
 
     @property
     def stim_start_time(self) -> float:
-        v_start = np.nonzero(self.v_frame_idx == 1)[0][0]
-        tstart = self.v_present_time[v_start]
+        v_start = np.nonzero(self.frame_index == 1)[0][0]
+        tstart = self.time[v_start]
 
         if isinstance(self.time_offset, float):
-            return tstart + self.time_offset
+            return float(tstart + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
-            return tstart + self.time_offset[0]
+            return float(tstart + self.time_offset[0])
 
     @property
     def stim_end_time(self) -> float:
-        v_end = np.nonzero(np.diff(self.v_frame_idx) < 0)[0][-1] + 1
-        tend = self.v_present_time[v_end]
+        v_end = np.nonzero(np.diff(self.frame_index) < 0)[0][-1] + 1
+        tend = self.time[v_end]
 
         if isinstance(self.time_offset, float):
-            return tend + self.time_offset
+            return float(tend + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
-            return tend + self.time_offset[-1]
+            return float(tend + self.time_offset[-1])
 
     @property
     def stimulus_segment(self) -> np.ndarray:
-        v_start = self.v_frame_idx == 1
-        t1 = self.v_present_time[v_start]
-        t2 = self.v_present_time[np.nonzero(np.diff(self.v_frame_idx) < 0)[0] + 1]
+        v_start = self.frame_index == 1
+        t1 = self.time[v_start]
+        t2 = self.time[np.nonzero(np.diff(self.frame_index) < 0)[0] + 1]
 
         if isinstance(self.time_offset, float):
             offset = self.time_offset
@@ -370,7 +370,7 @@ class Stimlog(StimlogBase):
     @property
     def time_offset_statemachine(self) -> np.ndarray:
         """time offset approach using statemachine"""
-        return self.s_present_time - self.s_on_v
+        return self.state_time - self.s_on_v
 
     def session_trials(self) -> dict[Session, SessionInfo]:
         return {
@@ -379,13 +379,13 @@ class Stimlog(StimlogBase):
         }
 
     def get_stim_pattern(self) -> StimPattern:
-        prot = StimpyProtocol.load(self.stimlog_file.with_suffix('.prot'))
-        v_start = self.v_frame_idx == 1
+        prot = self.riglog_data.get_protocol()
+        v_start = self.frame_index == 1
         t = self.stimulus_segment
-        dire = self.v_ori[v_start]
-        sf = self.v_sf[v_start]
-        contrast = self.v_contrast[v_start]
-        nr = self.v_stim[v_start]  # sti_nr = 0-71, len: 360
+        dire = self.ori[v_start]
+        sf = self.sf[v_start]
+        contrast = self.contrast[v_start]
+        nr = self.stim_index[v_start]  # sti_nr = 0-71, len: 360
 
         tf = prot.tf[nr]
         dur = prot['dur'][nr]
@@ -394,6 +394,70 @@ class Stimlog(StimlogBase):
 
     def get_time_profile(self):
         raise NotImplementedError('')
+
+    def get_visual_presentation_dataframe(self, stim_only: bool = True) -> pl.DataFrame:
+        """
+        Get the stimlog visual stimulation logging as dataframe::
+
+            ┌─────────────┬───────┬────────┬───────┬───┬───────┬──────┬───────────┬──────────┐
+            │ presentTime ┆ iStim ┆ iTrial ┆ photo ┆ … ┆ ori   ┆ sf   ┆ phase     ┆ stim_idx │
+            │ ---         ┆ ---   ┆ ---    ┆ ---   ┆   ┆ ---   ┆ ---  ┆ ---       ┆ ---      │
+            │ f64         ┆ f64   ┆ f64    ┆ f64   ┆   ┆ f64   ┆ f64  ┆ f64       ┆ f64      │
+            ╞═════════════╪═══════╪════════╪═══════╪═══╪═══════╪══════╪═══════════╪══════════╡
+            │ 904.048038  ┆ 69.0  ┆ 0.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.16 ┆ 0.066667  ┆ 1.0      │
+            │ …           ┆ …     ┆ …      ┆ …     ┆ … ┆ …     ┆ …    ┆ …         ┆ …        │
+            │ 2710.807378 ┆ 45.0  ┆ 4.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.04 ┆ 11.933333 ┆ 179.0    │
+            │ 2710.824102 ┆ 45.0  ┆ 4.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.04 ┆ 11.933333 ┆ 179.0    │
+            └─────────────┴───────┴────────┴───────┴───┴───────┴──────┴───────────┴──────────┘
+
+        :param stim_only: only show the stimulation epoch
+        :return: visual stimuli dataframe
+        """
+        if self.riglog_data.get_stimulus_type() == 'gratings':
+            headers = self.log_header[10][1:]
+            mask = self.frame_index != -1 if stim_only else slice(None, None)
+
+            return pl.DataFrame(
+                np.vstack([self.time[mask],
+                           self.stim_index[mask],
+                           self.trial_index[mask],
+                           self.photo_state[mask],
+                           self.contrast[mask],
+                           self.ori[mask],
+                           self.sf[mask],
+                           self.phase[mask],
+                           self.frame_index[mask]]),
+                schema=headers
+            )
+
+    def get_state_machine_dataframe(self) -> pl.DataFrame:
+        """
+        State Machine dataframe::
+
+            ┌──────────┬───────┬──────────┬──────────┬──────────────┬───────────┐
+            │ elapsed  ┆ cycle ┆ newState ┆ oldState ┆ stateElapsed ┆ trialType │
+            │ ---      ┆ ---   ┆ ---      ┆ ---      ┆ ---          ┆ ---       │
+            │ f64      ┆ f64   ┆ f64      ┆ f64      ┆ f64          ┆ f64       │
+            ╞══════════╪═══════╪══════════╪══════════╪══════════════╪═══════════╡
+            │ 902.601  ┆ 0.0   ┆ 1.0      ┆ 0.0      ┆ 902.601      ┆ 0.0       │
+            │ 904.614  ┆ 0.0   ┆ 2.0      ┆ 1.0      ┆ 2.012        ┆ 0.0       │
+            │ …        ┆ …     ┆ …        ┆ …        ┆ …            ┆ …         │
+            │ 2711.425 ┆ 0.0   ┆ 3.0      ┆ 2.0      ┆ 3.01         ┆ 0.0       │
+            │ 2711.425 ┆ 0.0   ┆ 0.0      ┆ 3.0      ┆ 0.0          ┆ 0.0       │
+            └──────────┴───────┴──────────┴──────────┴──────────────┴───────────┘
+
+        :return:
+        """
+        headers = self.log_header[20][1:]
+        return pl.DataFrame(
+            np.vstack([self.state_time,
+                       self.state_cycle,
+                       self.state_new_state,
+                       self.state_old_state,
+                       self.state_elapsed,
+                       self.state_trial_type]),
+            schema=headers
+        )
 
 
 # ================= #
@@ -429,7 +493,7 @@ def diode_time_offset(rig: RiglogData,
     :return: tuple of offset average and std value
     """
 
-    stimlog = rig.stimlog_data()
+    stimlog = rig.get_stimlog()
     if not isinstance(stimlog, Stimlog):
         raise TypeError('')
 
@@ -468,10 +532,10 @@ def diode_time_offset(rig: RiglogData,
 def _check_if_diode_pulse(rig: RiglogData) -> float:
     """only count 1st difference"""
     screen_time = rig.screen_event.time
-    stimlog = rig.stimlog_data()
+    stimlog = rig.get_stimlog()
     if not isinstance(stimlog, Stimlog):
         raise TypeError('')
-    stimlog_vstart = stimlog.v_present_time[(stimlog.v_frame_idx == 1)]
+    stimlog_vstart = stimlog.time[(stimlog.frame_index == 1)]
 
     try:
         # noinspection PyTypeChecker
@@ -481,11 +545,11 @@ def _check_if_diode_pulse(rig: RiglogData) -> float:
 
 
 def _diode_offset_sequential(rig: RiglogData, debug_plot: bool = False) -> np.ndarray:
-    stimlog = rig.stimlog_data()
+    stimlog = rig.get_stimlog()
     if not isinstance(stimlog, Stimlog):
         raise TypeError('')
 
-    stimlog_vstart = stimlog.v_present_time[(stimlog.v_frame_idx == 1)]
+    stimlog_vstart = stimlog.time[(stimlog.frame_index == 1)]
     riglog_vstart = rig.screen_event.time[0::2]
 
     if len(riglog_vstart) != len(stimlog_vstart):
@@ -715,19 +779,3 @@ class StimpyProtocol(AbstractStimProtocol):
             return self['tf']
         else:
             raise NotImplementedError('')
-
-    def to_dict(self) -> dict[str, Any]:
-        ret = {
-            'controller': self.controller,
-            'displayType': self.options['displayType'],
-            'background': self.options['background'],
-            'stimulusType': self.options['stimulusType'],
-            'nTrials': self.n_trials,
-            'shuffle': self.options['shuffle'],
-            'blankDuration': self.blank_duration,
-            'startBlankDuration': self.start_blank_duration,
-            'endBlankDuration': self.end_blank_duration,
-            'visual_stimuli': self.visual_stimuli_dataframe
-        }
-
-        return ret

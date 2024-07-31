@@ -15,6 +15,7 @@ __all__ = [
     'SFTF',
     'VisualParas',
     #
+    'StimulusPars',
     'StimPattern'
 ]
 
@@ -23,6 +24,19 @@ SF: TypeAlias = float  # cyc/deg
 TF: TypeAlias = int  # Hz
 SFTF: TypeAlias = tuple[SF, TF]
 VisualParas: TypeAlias = tuple[SF, TF, Degree]
+
+
+class StimulusPars(NamedTuple):
+    index: int
+    """stimulus index"""
+    time: np.ndarray
+    """stim on-off time. Array[float, 2]. (N,)"""
+    sf: SF
+    """spatial frequency in cyc/deg"""
+    tf: TF
+    """temporal frequency in hz"""
+    direction: Degree
+    """stimulus direction in deg"""
 
 
 class StimPattern(NamedTuple):
@@ -53,7 +67,7 @@ class StimPattern(NamedTuple):
         :param rig: :class:`~stimpyp.parser.baselog.Baselog`
         :return: :class:`StimPattern`
         """
-        return rig.stimlog_data().get_stim_pattern()
+        return rig.get_stimlog().get_stim_pattern()
 
     @property
     def sf_set(self) -> np.ndarray:
@@ -121,10 +135,20 @@ class StimPattern(NamedTuple):
             ])
         }
 
-    def foreach_stimulus(self) -> Iterable[tuple[int, np.ndarray, SF, TF, Degree]]:
-        """Generator for (index, stimulus_time, sf, tf, ori)"""
+    def foreach_stimulus(self, name: bool = False) -> Iterable[tuple[int, np.ndarray, SF, TF, Degree] | StimulusPars]:
+        """
+        Generator for (index, stimulus_time, sf, tf, ori)
+
+        :param name: If True, return ``StimulusPars``, otherwise, return tuple
+        :return:
+        """
         for si, st in enumerate(self.time):
-            yield si, st, self.sf[si], self.tf[si], self.direction[si]
+            ret = si, st, self.sf[si], self.tf[si], self.direction[si]
+
+            if name:
+                yield StimulusPars(*ret)
+            else:
+                yield ret
 
     def get_stim_time(self) -> float:
         """get approximate stim time if the same duration. i.e., for plotting purpose"""

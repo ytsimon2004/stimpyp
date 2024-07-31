@@ -75,12 +75,12 @@ class PyVlog(Baselog):
 
     # ===== #
 
-    def stimlog_data(self) -> 'StimlogPyVStim':
+    def get_stimlog(self) -> 'StimlogPyVStim':
         return StimlogPyVStim(self)
 
-    def get_prot_file(self) -> PyVProtocol:
+    def get_protocol(self) -> PyVProtocol:
         if self.__prot_cache is None:
-            self.__prot_cache = PyVProtocol.load(self.stim_prot_file)
+            self.__prot_cache = PyVProtocol.load(self.prot_file)
 
         return self.__prot_cache
 
@@ -221,7 +221,7 @@ class StimTimeProfile(AbstractStimTimeProfile):
         ret = {
             'n_trials': self.n_trials,
             'foreach_trial_time': np.diff(self.get_time_interval(), axis=1),
-            'n_cycle:': self.stim.riglog_data.get_prot_file().get_loops_expr().n_cycles
+            'n_cycle:': self.stim.riglog_data.get_protocol().get_loops_expr().n_cycles
         }
         return repr(ret)
 

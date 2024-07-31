@@ -74,13 +74,6 @@ class AbstractStimProtocol(metaclass=abc.ABCMeta):
     def stim_params(self) -> tuple[str, ...]:
         return tuple(self.visual_stimuli_dataframe.columns)
 
-    # @property
-    # def visual_stimuli(self) -> list[GenericStim]:  # TODO check
-    #     if self._visual_stimuli is None:
-    #         from rscvp.ztimpy.stim.stimulus import VisualStimulus
-    #         self._visual_stimuli = VisualStimulus.from_protocol(self)
-    #     return self._visual_stimuli
-
     @overload
     def __getitem__(self, item: int) -> pl.DataFrame:
         """get row of visual stimuli"""
@@ -188,6 +181,3 @@ class AbstractStimProtocol(metaclass=abc.ABCMeta):
         """(T,)"""
         return self.options['nTrials']
 
-    def to_dict(self) -> dict[str, Any]:
-        """to stimpy runtime readable dict TODO"""
-        pass
