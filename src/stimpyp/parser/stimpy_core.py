@@ -14,7 +14,7 @@ from neuralib.util.util_verbose import fprint
 from .baselog import Baselog, LOG_SUFFIX, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo, get_protocol_sessions
-from .stimulus import StimPattern
+from .stimulus import GratingPattern, AbstractStimulusPattern
 from .util import unfold_stimuli_condition, try_casting_number
 
 __all__ = ['RiglogData',
@@ -178,6 +178,15 @@ class Stimlog(StimlogBase):
         self._reset()
 
     def _reset(self):
+        stim_type = self.riglog_data.get_stimulus_type()
+        if self.riglog_data is None:
+            self._reset_gratings()  # testing
+        elif stim_type == 'gratings':
+            self._reset_gratings()
+        elif stim_type == 'functions':
+            self._reset_functions()
+
+    def _reset_gratings(self):
         time = []
         stim_index = []
         trial_index = []
@@ -263,15 +272,7 @@ class Stimlog(StimlogBase):
         self.frame_index = np.array(frame_index)
 
         # special case
-        try:
-            prot = self.riglog_data.get_protocol()
-        except AttributeError:
-            fprint('cannot inferred prot file due to class not has riglog attribute', vtype='warning')
-            pass
-        else:
-            v_start = self.frame_index == 1
-            nr = self.stim_index[v_start]
-            self.tf = prot.tf[nr]
+        self._reset_tf()
 
         # state machine
         self.s_on_v = np.array(s_on_v)
@@ -281,6 +282,115 @@ class Stimlog(StimlogBase):
         self.state_old_state = np.array(s_old_state)
         self.state_elapsed = np.array(s_state_elapsed)
         self.state_trial_type = np.array(s_trial_type)
+
+    def _reset_functions(self):
+        time = []
+        stim_index = []
+        trial_index = []
+        photo_state = []
+        contrast = []
+        pos_x = []
+        pos_y = []
+        size_x = []
+        size_y = []
+        frame_index = []
+
+        s_on_v = []
+        s_present_time = []
+        s_cycle = []
+        s_new_state = []
+        s_old_state = []
+        s_state_elapsed = []
+        s_trial_type = []
+
+        with self.stimlog_file.open() as _f:
+            for number, line in enumerate(_f):
+                line = line.strip()
+                if len(line) == 0:
+                    continue
+
+                if line.startswith('#'):
+                    self._reset_comment_info(line)
+                    continue
+
+                part = line.split(',')
+
+                try:
+                    code = int(part[0])
+
+                    if code == 10:
+                        time.append(float(part[1]))
+
+                        try:
+                            stim_value = int(part[2])
+                        except ValueError:  # 'None'
+                            stim_value = -1
+                        stim_index.append(stim_value)
+
+                        trial_index.append(int(part[3]))
+                        photo_state.append(int(part[4]))
+
+                        if len(part) > 5:
+                            contrast.append(float(part[5]))
+                            pos_x.append(int(float(part[6])))
+                            pos_y.append(float(part[7]))
+                            size_x.append(float(part[8]))
+                            size_y.append(int(part[9]))
+                            frame_index.append(int(part[10]))
+                        else:
+                            # empty list item = -1
+                            contrast.append(-1)
+                            pos_x.append(-1)
+                            pos_y.append(-1)
+                            size_x.append(-1)
+                            size_y.append(-1)
+                            frame_index.append(-1)
+
+                    elif code == 20:
+                        s_on_v.append(time[-1])  # sync s to v
+                        s_present_time.append(int(part[1]) / 1000)
+                        s_cycle.append(int(part[2]))
+                        s_new_state.append(int(part[3]))
+                        s_old_state.append(int(part[4]))
+                        s_state_elapsed.append(int(part[5]) / 1000)
+                        s_trial_type.append(int(part[6]))
+
+                    else:
+                        raise ValueError(f'unknown code : {code}')
+
+                except BaseException as e:
+                    raise RuntimeError(f'line {number}: {line}') from e
+
+        self.time = np.array(time)
+        self.stim_index = np.array(stim_index)
+        self.trial_index = np.array(trial_index)
+        self.photo_state = np.array(photo_state)
+        self.contrast = np.array(contrast)
+        self.pos_x = np.array(pos_x)
+        self.pos_y = np.array(pos_y)
+        self.size_x = np.array(size_x)
+        self.size_y = np.array(size_y)
+        self.frame_index = np.array(frame_index)
+
+        # state machine
+        self.s_on_v = np.array(s_on_v)
+        self.state_time = np.array(s_present_time)
+        self.state_cycle = np.array(s_cycle)
+        self.state_new_state = np.array(s_new_state)
+        self.state_old_state = np.array(s_old_state)
+        self.state_elapsed = np.array(s_state_elapsed)
+        self.state_trial_type = np.array(s_trial_type)
+
+    def _reset_tf(self):
+        try:
+            prot = self.riglog_data.get_protocol()
+        except AttributeError:
+            fprint('cannot inferred prot file due to class not has riglog attribute', vtype='warning')
+            pass
+        else:
+            v_start = self.frame_index == 1
+            nr = self.stim_index[v_start]
+            self.tf = prot.tf[nr]
 
     def _reset_comment_info(self, line: str):
         if 'CODES' in line:
@@ -378,19 +488,29 @@ class Stimlog(StimlogBase):
             for prot in get_protocol_sessions(self)
         }
 
-    def get_stim_pattern(self) -> StimPattern:
-        prot = self.riglog_data.get_protocol()
-        v_start = self.frame_index == 1
-        t = self.stimulus_segment
-        dire = self.ori[v_start]
-        sf = self.sf[v_start]
-        contrast = self.contrast[v_start]
-        nr = self.stim_index[v_start]  # sti_nr = 0-71, len: 360
+    def get_stim_pattern(self) -> AbstractStimulusPattern:
 
-        tf = prot.tf[nr]
-        dur = prot['dur'][nr]
+        stim_type = self.riglog_data.get_stimulus_type()
 
-        return StimPattern(t, dire, sf, tf, contrast, dur)
+        if stim_type == 'gratings':
+            prot = self.riglog_data.get_protocol()
+            v_start = self.frame_index == 1
+            t = self.stimulus_segment
+            dire = self.ori[v_start]
+            sf = self.sf[v_start]
+            contrast = self.contrast[v_start]
+            nr = self.stim_index[v_start]
+
+            tf = prot.tf[nr]
+            dur = prot['dur'][nr]
+
+            return GratingPattern(t, contrast, dire, sf, tf, duration=dur)
+
+        elif stim_type == 'functions':
+            pass
+
+        else:
+            raise NotImplementedError('')
 
     def get_time_profile(self):
         raise NotImplementedError('')
@@ -620,7 +740,11 @@ class StimpyProtocol(AbstractStimProtocol):
 
             elif state == 0:
                 idx = line.index('=')
-                options[line[:idx].strip()] = try_casting_number(line[idx + 1:].strip())
+                value = try_casting_number(line[idx + 1:].strip())
+                if isinstance(value, str) and '#' in value:
+                    cmt = value.index('#')
+                    value = value[:cmt].strip()
+                options[line[:idx].strip()] = value
 
             elif state == 1:
                 parts = re.split(' +', line, maxsplit=len(header))

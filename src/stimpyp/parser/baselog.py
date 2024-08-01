@@ -11,7 +11,7 @@ from neuralib.typing import PathLike
 from .event import RigEvent, CamEvent
 from .preference import PreferenceDict, load_preferences
 from .session import Session, SessionInfo
-from .stimulus import StimPattern
+from .stimulus import AbstractStimulusPattern
 
 __all__ = [
     'STIMPY_SOURCE_VERSION',
@@ -441,7 +441,7 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_stim_pattern(self) -> StimPattern:
+    def get_stim_pattern(self) -> AbstractStimulusPattern:
         """get pattern foreach stimulation"""
         pass
 

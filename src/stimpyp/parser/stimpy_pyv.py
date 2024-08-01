@@ -15,7 +15,7 @@ from neuralib.util.util_verbose import fprint
 from .baselog import Baselog, LOG_SUFFIX, StimlogBase, AbstractStimTimeProfile
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo
-from .stimulus import StimPattern
+from .stimulus import GratingPattern
 from .util import try_casting_number, unfold_stimuli_condition
 
 __all__ = ['PyVlog',
@@ -182,7 +182,7 @@ class StimlogPyVStim(StimlogBase):
         """directly used interpolation using diode signal already"""
         return 0
 
-    def get_stim_pattern(self) -> StimPattern:
+    def get_stim_pattern(self) -> GratingPattern:
         raise NotImplementedError('')
 
     def exp_end_time(self) -> float:

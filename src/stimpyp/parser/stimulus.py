@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import NamedTuple, Iterable, TYPE_CHECKING
+import abc
+from typing import NamedTuple, Iterable, TYPE_CHECKING, TypeVar, Any, Generic
 
 import numpy as np
 from typing_extensions import TypeAlias, Self
@@ -15,8 +16,8 @@ __all__ = [
     'SFTF',
     'VisualParas',
     #
-    'StimulusPars',
-    'StimPattern'
+    'GratingStim',
+    'GratingPattern'
 ]
 
 Degree: TypeAlias = int  # degree
@@ -26,11 +27,11 @@ SFTF: TypeAlias = tuple[SF, TF]
 VisualParas: TypeAlias = tuple[SF, TF, Degree]
 
 
-class StimulusPars(NamedTuple):
+class GratingStim(NamedTuple):
     index: int
     """stimulus index"""
     time: np.ndarray
-    """stim on-off time. Array[float, 2]. (N,)"""
+    """stim on-off time. Array[float, 2]."""
     sf: SF
     """spatial frequency in cyc/deg"""
     tf: TF
@@ -39,25 +40,32 @@ class StimulusPars(NamedTuple):
     """stimulus direction in deg"""
 
 
-class StimPattern(NamedTuple):
+S = TypeVar('S')
+
+
+class AbstractStimulusPattern(Generic[S], metaclass=abc.ABCMeta):
     """Stimulus Parameters
 
     `Dimension parameters`:
 
         N = numbers of visual stimulation (on-off pairs) = (T * S)
     """
+
     time: np.ndarray
-    """stim on-off in sec (N, 2)"""
-    direction: np.ndarray  # int (degree) (N,)
-    """degree (N,)"""
-    sf: np.ndarray  # float (cyc/deg) (N,)
-    """cyc/deg (N,)"""
-    tf: np.ndarray  # int (Hz) (N,)
-    """hz (N,)"""
+    """stim on-off in sec. Array[float, [N, 2]]"""
     contrast: np.ndarray
-    """stimulus contrast (N,)"""
+    """stimulus contrast. Array[float, N]"""
+
     duration: np.ndarray
-    """theoretical duration in prot file, not actual detected using diode"""
+    """theoretical duration in prot file, not actual detected using diode. Array[float, N]"""
+
+    def __init__(self,
+                 time: np.ndarray,
+                 contrast: np.ndarray, *,
+                 duration: np.ndarray | None = None):
+        self.time = time
+        self.contrast = contrast
+        self.duration = duration
 
     @classmethod
     def of(cls, rig: 'R') -> Self:
@@ -68,6 +76,34 @@ class StimPattern(NamedTuple):
         :return: :class:`StimPattern`
         """
         return rig.get_stimlog().get_stim_pattern()
+
+    @abc.abstractmethod
+    def foreach_stimulus(self, name: bool = False) -> Iterable[Any | S]:
+        pass
+
+
+class GratingPattern(AbstractStimulusPattern):
+    direction: np.ndarray
+    """stimulus direction in deg. Array[int, N]"""
+
+    sf: np.ndarray
+    """spatial frequency in cyc/deg. Array[float, N]"""
+
+    tf: np.ndarray
+    """temporal frequency in hz Array[int, N]"""
+
+    def __init__(self, time: np.ndarray,
+                 contrast: np.ndarray,
+                 direction: np.ndarray,
+                 sf: np.ndarray,
+                 tf: np.ndarray, *,
+                 duration: np.ndarray | None = None):
+
+        super().__init__(time, contrast, duration=duration)
+
+        self.direction = direction
+        self.sf = sf
+        self.tf = tf
 
     @property
     def sf_set(self) -> np.ndarray:
@@ -135,7 +171,7 @@ class StimPattern(NamedTuple):
             ])
         }
 
-    def foreach_stimulus(self, name: bool = False) -> Iterable[tuple[int, np.ndarray, SF, TF, Degree] | StimulusPars]:
+    def foreach_stimulus(self, name: bool = False) -> Iterable[tuple[int, np.ndarray, SF, TF, Degree] | GratingStim]:
         """
         Generator for (index, stimulus_time, sf, tf, ori)
 
@@ -146,7 +182,7 @@ class StimPattern(NamedTuple):
             ret = si, st, self.sf[si], self.tf[si], self.direction[si]
 
             if name:
-                yield StimulusPars(*ret)
+                yield GratingStim(*ret)
             else:
                 yield ret
 

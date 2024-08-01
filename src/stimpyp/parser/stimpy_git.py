@@ -13,7 +13,7 @@ from neuralib.util.utils import future_deprecate
 from .baselog import StimlogBase
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimpy_core import RiglogData, StimpyProtocol
-from .stimulus import StimPattern
+from .stimulus import GratingPattern
 
 __all__ = ['StimlogGit',
            'load_stimlog']
@@ -421,7 +421,7 @@ class StimlogGit(StimlogBase):
             self._cache_time_offset = _time_offset(self.riglog_data, self, self.diode_offset)[0]
         return self._cache_time_offset
 
-    def get_stim_pattern(self) -> StimPattern:
+    def get_stim_pattern(self) -> GratingPattern:
         prot = StimpyProtocol.load(self.stimlog_file.with_suffix('.prot'))
         log_nr = self.get_column('LogDict', 'condition_nr').astype(int)
 
@@ -432,7 +432,7 @@ class StimlogGit(StimlogBase):
         contrast = np.array([prot['c'][n] for n in log_nr])
         dur = np.array([prot['dur'][n] for n in log_nr])
 
-        return StimPattern(t, ori, sf, tf, contrast, dur)
+        return GratingPattern(t, ori, sf, tf, contrast, dur)
 
     def get_time_profile(self):
         raise NotImplementedError('')
