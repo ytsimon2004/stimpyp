@@ -1,6 +1,6 @@
 [project]
 name = "stimpyp"
-version = "0.0.2"
+version = "0.0.3"
 requires-python = ">=3.9"
 description = "utilities parser for the Stimpy module"
 authors = [
