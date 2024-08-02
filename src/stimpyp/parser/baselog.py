@@ -441,7 +441,7 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_stim_pattern(self) -> AbstractStimulusPattern:
+    def get_stim_pattern(self, **kwargs) -> AbstractStimulusPattern:
         """get pattern foreach stimulation"""
         pass
 

@@ -14,7 +14,7 @@ from neuralib.util.util_verbose import fprint
 from .baselog import Baselog, LOG_SUFFIX, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo, get_protocol_sessions
-from .stimulus import GratingPattern, AbstractStimulusPattern
+from .stimulus import GratingPattern, AbstractStimulusPattern, FunctionPattern
 from .util import unfold_stimuli_condition, try_casting_number
 
 __all__ = ['RiglogData',
@@ -488,26 +488,39 @@ class Stimlog(StimlogBase):
             for prot in get_protocol_sessions(self)
         }
 
-    def get_stim_pattern(self) -> AbstractStimulusPattern:
+    def get_stim_pattern(self, with_dur: bool = False) -> AbstractStimulusPattern:
+        """
+        Get stimulus pattern container
 
+        :param with_dur: if extract theoretical duration value from protocol file
+        :return: ``AbstractStimulusPattern`` based on stim type
+        """
+        prot = self.riglog_data.get_protocol()
         stim_type = self.riglog_data.get_stimulus_type()
+        v_start = self.frame_index == 1
+        t = self.stimulus_segment
+        contrast = self.contrast[v_start]
+        nr = self.stim_index[v_start]
 
         if stim_type == 'gratings':
-            prot = self.riglog_data.get_protocol()
-            v_start = self.frame_index == 1
-            t = self.stimulus_segment
             dire = self.ori[v_start]
             sf = self.sf[v_start]
-            contrast = self.contrast[v_start]
-            nr = self.stim_index[v_start]
-
             tf = prot.tf[nr]
-            dur = prot['dur'][nr]
 
-            return GratingPattern(t, contrast, dire, sf, tf, duration=dur)
+            return GratingPattern(t, contrast, dire, sf, tf,
+                                  duration=prot['dur'][nr] if with_dur else None)
 
         elif stim_type == 'functions':
-            pass
+            pos_x = self.pos_x[v_start]
+            pos_y = self.pos_y[v_start]
+            size_x = self.size_x[v_start]
+            size_y = self.size_y[v_start]
+
+            pos_xy = np.vstack([pos_x, pos_y]).T
+            size_xy = np.vstack([size_x, size_y]).T
+
+            return FunctionPattern(t, contrast, pos_xy, size_xy,
+                                   duration=prot['dur'][nr] if with_dur else None)
 
         else:
             raise NotImplementedError('')
@@ -533,10 +546,11 @@ class Stimlog(StimlogBase):
         :param stim_only: only show the stimulation epoch
         :return: visual stimuli dataframe
         """
-        if self.riglog_data.get_stimulus_type() == 'gratings':
-            headers = self.log_header[10][1:]
-            mask = self.frame_index != -1 if stim_only else slice(None, None)
+        stim_type = self.riglog_data.get_stimulus_type()
+        headers = self.log_header[10][1:]
+        mask = self.frame_index != -1 if stim_only else slice(None, None)
 
+        if stim_type == 'gratings':
             return pl.DataFrame(
                 np.vstack([self.time[mask],
                            self.stim_index[mask],
@@ -549,6 +563,24 @@ class Stimlog(StimlogBase):
                            self.frame_index[mask]]),
                 schema=headers
             )
+
+        elif stim_type == 'functions':
+            return pl.DataFrame(
+                np.vstack([self.time[mask],
+                           self.stim_index[mask],
+                           self.trial_index[mask],
+                           self.photo_state[mask],
+                           self.contrast[mask],
+                           self.pos_x[mask],
+                           self.pos_y[mask],
+                           self.size_x[mask],
+                           self.size_y[mask],
+                           self.frame_index[mask]]),
+                schema=headers
+            )
+
+        else:
+            raise NotImplementedError('')
 
     def get_state_machine_dataframe(self) -> pl.DataFrame:
         """
