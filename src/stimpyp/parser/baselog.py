@@ -414,7 +414,7 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     # ============ #
 
     @abc.abstractmethod
-    def get_visual_presentation_dataframe(self, **kwargs) -> pl.DataFrame:
+    def get_visual_stim_dataframe(self, **kwargs) -> pl.DataFrame:
         pass
 
     @abc.abstractmethod

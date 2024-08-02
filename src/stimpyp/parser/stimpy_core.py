@@ -423,7 +423,7 @@ class Stimlog(StimlogBase):
                 missed = None
             self.config['missed_frames'] = missed
 
-    def get_visual_presentation_dataframe(self, stim_only: bool = True) -> pl.DataFrame:
+    def get_visual_stim_dataframe(self, stim_only: bool = True) -> pl.DataFrame:
         """
         Get the stimlog visual stimulation logging as dataframe::
 

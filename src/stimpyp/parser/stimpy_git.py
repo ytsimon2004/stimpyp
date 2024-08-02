@@ -214,7 +214,7 @@ class StimlogGit(StimlogBase):
 
         return log_data
 
-    def get_visual_presentation_dataframe(self) -> pl.DataFrame:
+    def get_visual_stim_dataframe(self) -> pl.DataFrame:
         """
         Visual presentation dataframe::
 
