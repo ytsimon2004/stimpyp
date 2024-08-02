@@ -171,7 +171,7 @@ class TestRiglogParser(unittest.TestCase):
         self.assertEqual(self.LOG.version, 'pyvstim')
 
     def test_version(self):
-        self.assertEqual(self.LOG.log_config['version'], 0.3)
+        self.assertEqual(self.LOG.log_config['rig_version'], '0.3')
 
     def test_commit_hash(self):
         self.assertEqual(self.LOG.log_config['commit_hash'], 'af97b40')
@@ -189,13 +189,20 @@ class TestRiglogParser(unittest.TestCase):
             'cam3': 8,
             'act0': 21,
             'act1': 22,
-            'opto': 15
+            'opto': 15,
+            'vstim': 10,
         }
-        self.assertDictEqual(self.LOG.log_config['codes'], res)
+
+        invert_dict = {
+            v: k
+            for k, v in self.LOG.log_info.items()
+        }
+
+        self.assertDictEqual(invert_dict, res)
 
     def test_csv_fields(self):
-        res = ('code', 'time received', 'duino time', 'value')
-        self.assertTupleEqual(self.LOG.log_config['fields'], res)
+        res = ['code', 'time received', 'duino time', 'value']
+        self.assertListEqual(self.LOG.log_header[1], res)
 
 
 if __name__ == '__main__':

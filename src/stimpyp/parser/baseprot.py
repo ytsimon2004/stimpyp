@@ -110,7 +110,8 @@ class AbstractStimProtocol(metaclass=abc.ABCMeta):
     @classmethod
     @abc.abstractmethod
     def load(cls, file: Path | str) -> AbstractStimProtocol:
-        """Load *.prot file
+        r"""
+        Load \*.prot file
 
         :param file: file path
         """

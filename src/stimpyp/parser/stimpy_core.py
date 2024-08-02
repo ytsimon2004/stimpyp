@@ -11,7 +11,7 @@ from typing_extensions import Self
 from neuralib.plot.figure import plot_figure
 from neuralib.typing import PathLike
 from neuralib.util.util_verbose import fprint
-from .baselog import Baselog, LOG_SUFFIX, StimlogBase
+from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimulus import GratingPattern, AbstractStimulusPattern, FunctionPattern
@@ -28,20 +28,9 @@ class RiglogData(Baselog):
     (mainly tested in the commits derived from master branch)
     """
 
-    def __init__(self,
-                 root_path: PathLike,
-                 log_suffix: LOG_SUFFIX = '.riglog',
-                 diode_offset: bool = True):
-        """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, log_suffix='.riglog', **kwargs)
 
-        :param root_path:
-        :param log_suffix:
-        :param diode_offset:
-        """
-
-        super().__init__(root_path, log_suffix, diode_offset)
-
-        # cache
         self.__stimlog_cache: StimlogBase | None = None
         self.__prot_cache: StimpyProtocol | None = None
 
@@ -178,13 +167,18 @@ class Stimlog(StimlogBase):
         self._reset()
 
     def _reset(self):
-        stim_type = self.riglog_data.get_stimulus_type()
-        if self.riglog_data is None:
-            self._reset_gratings()  # testing
-        elif stim_type == 'gratings':
+        try:
+            stim_type = self.riglog_data.get_stimulus_type()
+        except AttributeError:
+            fprint(f'no riglog init, for only testing, some methods might causes problem', vtype='warning')
+            return self._reset_gratings()  # testing
+
+        if stim_type == 'gratings':
             self._reset_gratings()
         elif stim_type == 'functions':
             self._reset_functions()
+        else:
+            raise NotImplementedError(f'{stim_type}')
 
     def _reset_gratings(self):
         time = []
@@ -413,7 +407,7 @@ class Stimlog(StimlogBase):
         elif 'Commit' in line:
             heading, content = line.split(': ')
             commit = content.strip()
-            self.config['commit hash'] = commit
+            self.config['commit_hash'] = commit
 
         elif 'Missed' in line:
             match = re.search(r'\d+', line)
@@ -735,13 +729,13 @@ def _plot_time_alignment_diode(riglog_screen: np.ndarray,
 # ======== #
 
 class StimpyProtocol(AbstractStimProtocol):
-    """
+    r"""
     class for handle the protocol file for stimpy **bitbucket/github** version
     (mainly tested in the commits derived from master branch)
 
     `Dimension parameters`:
 
-        N = numbers of visual stimulation (on-off pairs) = (T * S)
+        N = numbers of visual stimulation (on-off pairs) = (T \* S)
 
         T = number of trials
 

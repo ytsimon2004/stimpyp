@@ -10,9 +10,8 @@ import numpy as np
 import polars as pl
 from scipy.interpolate import interp1d
 
-from neuralib.typing import PathLike
 from neuralib.util.util_verbose import fprint
-from .baselog import Baselog, LOG_SUFFIX, StimlogBase, AbstractStimTimeProfile
+from .baselog import Baselog, StimlogBase, AbstractStimTimeProfile
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo
 from .stimulus import GratingPattern
@@ -31,12 +30,9 @@ class PyVlog(Baselog):
     log_info: dict[int, str] = {}
     log_header: dict[int, list[str]] = {}
 
-    def __init__(self,
-                 root_path: PathLike,
-                 log_suffix: LOG_SUFFIX = '.log',
-                 diode_offset: bool = False):
+    def __init__(self, *args, **kwargs):
 
-        super().__init__(root_path, log_suffix, diode_offset)
+        super().__init__(*args, log_suffix='.log', diode_offset=False, **kwargs)
         self.__prot_cache: PyVProtocol | None = None
 
     def _get_log_config(self) -> dict[str, Any]:
@@ -77,11 +73,11 @@ class PyVlog(Baselog):
                             self.log_header[i] = content.split(',')
 
                     elif 'RIG VERSION' in line:
-                        heading, content = line.split(':')
+                        heading, content = line.split(': ')
                         self.log_config['rig_version'] = content
 
                     elif 'RIG GIT COMMIT HASH' in line:
-                        heading, content = line.split(':')
+                        heading, content = line.split(': ')
                         self.log_config['commit_hash'] = content
 
         self.log_config['source_version'] = 'pyvstim'
@@ -341,12 +337,12 @@ class StimTimeProfile(AbstractStimTimeProfile):
 # ======== #
 
 class PyVProtocol(AbstractStimProtocol):
-    """
+    r"""
     class for handle the protocol file for pyvstim version (vb lab legacy)
 
     `Dimension parameters`:
 
-        N = number of visual stimulation (on-off pairs) = (T * S)
+        N = number of visual stimulation (on-off pairs) = (T \* S)
 
         T = number of trials
 
@@ -356,7 +352,8 @@ class PyVProtocol(AbstractStimProtocol):
     """
 
     @classmethod
-    def load(cls, file: Path | str, *,
+    def load(cls,
+             file: Path | str, *,
              cast_numerical_opt=True) -> 'PyVProtocol':
 
         file = Path(file)

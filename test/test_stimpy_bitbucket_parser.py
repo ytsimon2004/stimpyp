@@ -1173,7 +1173,7 @@ class TestStimlogParser(unittest.TestCase):
         cls.FILEPATH.unlink()
 
     def test_code_version(self):
-        self.assertEqual(self.STIM.code_version, '6d30281')
+        self.assertEqual(self.STIM.config['commit_hash'], '6d30281')
 
     def test_log_header(self):
         self.assertDictEqual(self.STIM.log_info, {10: 'vstim', 20: 'stateMachine'})
