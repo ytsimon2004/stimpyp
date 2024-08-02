@@ -353,18 +353,18 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     # ============= #
     # Function Base #
     # ============= #
-    # TODO check
+
     pos_x: np.ndarray
-    """display pos x. Array[float, P]"""
+    """object center position X. Array[float, P]"""
 
     pos_y: np.ndarray
-    """display pos y. Array[float, P]"""
+    """object center position Y. Array[float, P]"""
 
     size_x: np.ndarray
-    """stim center x. Array[int, P]"""
+    """object size width. Array[int, P]"""
 
     size_y: np.ndarray
-    """stim center y. Array[int, P]"""
+    """object size height. Array[int, P]"""
 
     def __init__(self,
                  riglog: R,
