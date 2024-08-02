@@ -123,13 +123,13 @@ class Stimlog(StimlogBase):
 
         S = number of Stim Type
 
-        V = number of acquisition sample pulse (Visual parameters)
+        P = number of acquisition sample pulse (Visual parameters)
 
         M = number of statemachine pulse
     """
-    code_version: str
-    log_info: dict[int, str] = {}
-    log_header: dict[int, list[str]] = {}
+
+    photo_state: np.ndarray
+    """photo diode on-off. Array[int, P]. value domain in (0,1)"""
 
     # ========================================= #
     # StateMachine logging (start from code 20) #
@@ -412,7 +412,99 @@ class Stimlog(StimlogBase):
 
         elif 'Commit' in line:
             heading, content = line.split(': ')
-            self.code_version = content.strip()
+            commit = content.strip()
+            self.config['commit hash'] = commit
+
+        elif 'Missed' in line:
+            match = re.search(r'\d+', line)
+            if match:
+                missed = int(match.group())
+            else:
+                missed = None
+            self.config['missed_frames'] = missed
+
+    def get_visual_presentation_dataframe(self, stim_only: bool = True) -> pl.DataFrame:
+        """
+        Get the stimlog visual stimulation logging as dataframe::
+
+            ┌─────────────┬───────┬────────┬───────┬───┬───────┬──────┬───────────┬──────────┐
+            │ presentTime ┆ iStim ┆ iTrial ┆ photo ┆ … ┆ ori   ┆ sf   ┆ phase     ┆ stim_idx │
+            │ ---         ┆ ---   ┆ ---    ┆ ---   ┆   ┆ ---   ┆ ---  ┆ ---       ┆ ---      │
+            │ f64         ┆ f64   ┆ f64    ┆ f64   ┆   ┆ f64   ┆ f64  ┆ f64       ┆ f64      │
+            ╞═════════════╪═══════╪════════╪═══════╪═══╪═══════╪══════╪═══════════╪══════════╡
+            │ 904.048038  ┆ 69.0  ┆ 0.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.16 ┆ 0.066667  ┆ 1.0      │
+            │ …           ┆ …     ┆ …      ┆ …     ┆ … ┆ …     ┆ …    ┆ …         ┆ …        │
+            │ 2710.807378 ┆ 45.0  ┆ 4.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.04 ┆ 11.933333 ┆ 179.0    │
+            │ 2710.824102 ┆ 45.0  ┆ 4.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.04 ┆ 11.933333 ┆ 179.0    │
+            └─────────────┴───────┴────────┴───────┴───┴───────┴──────┴───────────┴──────────┘
+
+        :param stim_only: only show the stimulation epoch
+        :return: visual stimuli dataframe
+        """
+        stim_type = self.riglog_data.get_stimulus_type()
+        headers = self.log_header[10][1:]
+        mask = self.frame_index != -1 if stim_only else slice(None, None)
+
+        if stim_type == 'gratings':
+            return pl.DataFrame(
+                np.vstack([self.time[mask],
+                           self.stim_index[mask],
+                           self.trial_index[mask],
+                           self.photo_state[mask],
+                           self.contrast[mask],
+                           self.ori[mask],
+                           self.sf[mask],
+                           self.phase[mask],
+                           self.frame_index[mask]]),
+                schema=headers
+            )
+
+        elif stim_type == 'functions':
+            return pl.DataFrame(
+                np.vstack([self.time[mask],
+                           self.stim_index[mask],
+                           self.trial_index[mask],
+                           self.photo_state[mask],
+                           self.contrast[mask],
+                           self.pos_x[mask],
+                           self.pos_y[mask],
+                           self.size_x[mask],
+                           self.size_y[mask],
+                           self.frame_index[mask]]),
+                schema=headers
+            )
+
+        else:
+            raise NotImplementedError('')
+
+    def get_state_machine_dataframe(self) -> pl.DataFrame:
+        """
+        State Machine dataframe::
+
+            ┌──────────┬───────┬──────────┬──────────┬──────────────┬───────────┐
+            │ elapsed  ┆ cycle ┆ newState ┆ oldState ┆ stateElapsed ┆ trialType │
+            │ ---      ┆ ---   ┆ ---      ┆ ---      ┆ ---          ┆ ---       │
+            │ f64      ┆ f64   ┆ f64      ┆ f64      ┆ f64          ┆ f64       │
+            ╞══════════╪═══════╪══════════╪══════════╪══════════════╪═══════════╡
+            │ 902.601  ┆ 0.0   ┆ 1.0      ┆ 0.0      ┆ 902.601      ┆ 0.0       │
+            │ 904.614  ┆ 0.0   ┆ 2.0      ┆ 1.0      ┆ 2.012        ┆ 0.0       │
+            │ …        ┆ …     ┆ …        ┆ …        ┆ …            ┆ …         │
+            │ 2711.425 ┆ 0.0   ┆ 3.0      ┆ 2.0      ┆ 3.01         ┆ 0.0       │
+            │ 2711.425 ┆ 0.0   ┆ 0.0      ┆ 3.0      ┆ 0.0          ┆ 0.0       │
+            └──────────┴───────┴──────────┴──────────┴──────────────┴───────────┘
+
+        :return:
+        """
+        headers = self.log_header[20][1:]
+        return pl.DataFrame(
+            np.vstack([self.state_time,
+                       self.state_cycle,
+                       self.state_new_state,
+                       self.state_old_state,
+                       self.state_elapsed,
+                       self.state_trial_type]),
+            schema=headers
+        )
 
     @property
     def exp_start_time(self) -> float:
@@ -527,89 +619,6 @@ class Stimlog(StimlogBase):
 
     def get_time_profile(self):
         raise NotImplementedError('')
-
-    def get_visual_presentation_dataframe(self, stim_only: bool = True) -> pl.DataFrame:
-        """
-        Get the stimlog visual stimulation logging as dataframe::
-
-            ┌─────────────┬───────┬────────┬───────┬───┬───────┬──────┬───────────┬──────────┐
-            │ presentTime ┆ iStim ┆ iTrial ┆ photo ┆ … ┆ ori   ┆ sf   ┆ phase     ┆ stim_idx │
-            │ ---         ┆ ---   ┆ ---    ┆ ---   ┆   ┆ ---   ┆ ---  ┆ ---       ┆ ---      │
-            │ f64         ┆ f64   ┆ f64    ┆ f64   ┆   ┆ f64   ┆ f64  ┆ f64       ┆ f64      │
-            ╞═════════════╪═══════╪════════╪═══════╪═══╪═══════╪══════╪═══════════╪══════════╡
-            │ 904.048038  ┆ 69.0  ┆ 0.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.16 ┆ 0.066667  ┆ 1.0      │
-            │ …           ┆ …     ┆ …      ┆ …     ┆ … ┆ …     ┆ …    ┆ …         ┆ …        │
-            │ 2710.807378 ┆ 45.0  ┆ 4.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.04 ┆ 11.933333 ┆ 179.0    │
-            │ 2710.824102 ┆ 45.0  ┆ 4.0    ┆ 0.0   ┆ … ┆ 270.0 ┆ 0.04 ┆ 11.933333 ┆ 179.0    │
-            └─────────────┴───────┴────────┴───────┴───┴───────┴──────┴───────────┴──────────┘
-
-        :param stim_only: only show the stimulation epoch
-        :return: visual stimuli dataframe
-        """
-        stim_type = self.riglog_data.get_stimulus_type()
-        headers = self.log_header[10][1:]
-        mask = self.frame_index != -1 if stim_only else slice(None, None)
-
-        if stim_type == 'gratings':
-            return pl.DataFrame(
-                np.vstack([self.time[mask],
-                           self.stim_index[mask],
-                           self.trial_index[mask],
-                           self.photo_state[mask],
-                           self.contrast[mask],
-                           self.ori[mask],
-                           self.sf[mask],
-                           self.phase[mask],
-                           self.frame_index[mask]]),
-                schema=headers
-            )
-
-        elif stim_type == 'functions':
-            return pl.DataFrame(
-                np.vstack([self.time[mask],
-                           self.stim_index[mask],
-                           self.trial_index[mask],
-                           self.photo_state[mask],
-                           self.contrast[mask],
-                           self.pos_x[mask],
-                           self.pos_y[mask],
-                           self.size_x[mask],
-                           self.size_y[mask],
-                           self.frame_index[mask]]),
-                schema=headers
-            )
-
-        else:
-            raise NotImplementedError('')
-
-    def get_state_machine_dataframe(self) -> pl.DataFrame:
-        """
-        State Machine dataframe::
-
-            ┌──────────┬───────┬──────────┬──────────┬──────────────┬───────────┐
-            │ elapsed  ┆ cycle ┆ newState ┆ oldState ┆ stateElapsed ┆ trialType │
-            │ ---      ┆ ---   ┆ ---      ┆ ---      ┆ ---          ┆ ---       │
-            │ f64      ┆ f64   ┆ f64      ┆ f64      ┆ f64          ┆ f64       │
-            ╞══════════╪═══════╪══════════╪══════════╪══════════════╪═══════════╡
-            │ 902.601  ┆ 0.0   ┆ 1.0      ┆ 0.0      ┆ 902.601      ┆ 0.0       │
-            │ 904.614  ┆ 0.0   ┆ 2.0      ┆ 1.0      ┆ 2.012        ┆ 0.0       │
-            │ …        ┆ …     ┆ …        ┆ …        ┆ …            ┆ …         │
-            │ 2711.425 ┆ 0.0   ┆ 3.0      ┆ 2.0      ┆ 3.01         ┆ 0.0       │
-            │ 2711.425 ┆ 0.0   ┆ 0.0      ┆ 3.0      ┆ 0.0          ┆ 0.0       │
-            └──────────┴───────┴──────────┴──────────┴──────────────┴───────────┘
-
-        :return:
-        """
-        headers = self.log_header[20][1:]
-        return pl.DataFrame(
-            np.vstack([self.state_time,
-                       self.state_cycle,
-                       self.state_new_state,
-                       self.state_old_state,
-                       self.state_elapsed,
-                       self.state_trial_type]),
-            schema=headers
-        )
 
 
 # ================= #

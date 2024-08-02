@@ -19,7 +19,6 @@ __all__ = ['StimlogGit',
            'load_stimlog']
 
 
-# TODO code 0 options need to be extended
 @final
 class StimlogGit(StimlogBase):
     """class for handle the stimlog file for stimpy **github** version
@@ -33,19 +32,8 @@ class StimlogGit(StimlogBase):
 
         S = number of Stim Type
 
-        V = number of acquisition sample pulse (Visual parameters)
-
         I = number of photo indicator pulse
     """
-
-    log_name: str | None
-    code_version: str | None
-    code_tags: str | None
-    header: list[str]
-    rig_trigger: tuple[str, float]
-    start_time: float
-    end_time: float
-    missing_frame: int
 
     log_info: dict[int, str]
     """{0: <'Gratings', ...>, 1: 'PhotoIndicator', 2: 'StateMachine', 3: 'LogDict'}"""
@@ -54,31 +42,37 @@ class StimlogGit(StimlogBase):
     log_data: dict[int, list[tuple[Any, ...]]]
     """only for StateMachine(2) and LogDict(3)"""
 
-    # Visual Presentation <Grating, ...>
-    v_present_time: np.ndarray  # (V,) float
-    v_duration: np.ndarray  # (V,)
-    v_contrast: np.ndarray  # (V,)
-    v_ori: np.ndarray  # (V,)
-    v_phase: np.ndarray  # (V,)
-    v_pos: np.ndarray  # shape(V, 2)
-    v_size: np.ndarray  # shape(V, 2)
-    v_flick: np.ndarray  # (V,)
-    v_interpolate: np.ndarray  # (V,) bool
-    v_mask: np.ndarray  # (V, ) bool, TODO
-    v_sf: np.ndarray  # (V,)
-    v_tf: np.ndarray  # (V,)
-    v_opto: np.ndarray  # (V,) int
-    v_pattern: np.ndarray
+    # =========== #
+    # Visual Pars #
+    # =========== #
 
-    # PhotoIndicator
-    p_time: np.ndarray  # (I,)
-    p_state: np.ndarray  # (I,) bool
-    p_size: np.ndarray  # (I,)
-    p_pos: np.ndarray  # (I, 2)
-    p_units: np.ndarray  # (I,)  str
-    p_mode: np.ndarray  # (I,)  int
-    p_frames: np.ndarray  # (I,)  int
-    p_enabled: np.ndarray  # (I,)  bool
+    duration: np.ndarray
+    """duration in sec. Array[float, P]"""
+    pos_xy: np.ndarray
+    """object center position XY. Array[float, [P, 2]]"""
+    size_xy: np.ndarray
+    """object size width and height. Array[int, [P, 2]]"""
+
+    # ============== #
+    # PhotoIndicator #
+    # ============== #
+
+    photo_time: np.ndarray
+    """photoindicator time. Array[float, I]"""
+    photo_state: np.ndarray
+    """photoindicator state. Array[bool, I]"""
+    photo_size: np.ndarray
+    """photoindicator size in given unit. Array[float, I]"""
+    photo_pos: np.ndarray
+    """photoindicator in XY. Array[int, [I, 2]]"""
+    photo_units: np.ndarray
+    """photoindicator unit. Array[str, I]"""
+    photo_mode: np.ndarray
+    """photoindicator mode. Array[int, I]"""
+    photo_frames: np.ndarray
+    """photoindicator frames . Array[int, I]"""
+    photo_enable: np.ndarray
+    """photoindicator size in pixel. Array[bool, I]"""
 
     def __init__(self, riglog: RiglogData,
                  file_path: PathLike,
@@ -91,16 +85,6 @@ class StimlogGit(StimlogBase):
         self._reset()
 
     def _reset(self):
-        self.log_name = None
-        self.code_version = None
-        self.code_tags = None
-        self.header = []
-        self.rig_trigger: tuple[str, float] = ('', 0)
-        self.start_time = np.nan  # TODO check, use for sync?
-        self.end_time = np.nan  # TODO check
-        self.missing_frame = 0
-        self.log_info = {}
-        self.log_header = {}
         log_data = {}
 
         with self.stimlog_file.open() as f:
@@ -114,27 +98,27 @@ class StimlogGit(StimlogBase):
                     info_value = m.group(2)
 
                     if info_name == 'LOG NAME':
-                        self.log_name = info_value
+                        self.config['log_name'] = info_value
                     elif info_name == 'CODE VERSION':
                         self._reset_code_version(info_value)
                     elif info_name == 'Format':
-                        self.header = info_value.split(' ')
-                        if self.header != ['source_id', 'time', 'source_infos']:
+                        self.config['format'] = info_value.split(' ')
+                        if self.config['format'] != ['source_id', 'time', 'source_infos']:
                             raise RuntimeError('stimlog format changed')
                     elif info_name == 'Rig trigger on':
                         info_value = info_value.split(',')
-                        self.rig_trigger = (info_value[0], float(info_value[1]))
+                        self.config['rig_trigger'] = (info_value[0], float(info_value[1]))
                     elif self._reset_log_info(info_name, info_value):
                         pass
                     else:
                         print(f'ignore header line at {line + 1} : {content}')
 
                 elif content.startswith('### START'):
-                    self.start_time = float(content[9:].strip())
+                    self.config['start_time'] = float(content[9:].strip())
                 elif content.startswith('### END'):
-                    self.end_time = float(content[7:].strip())
+                    self.config['end_time'] = float(content[7:].strip())
                 elif content.startswith('# Missed') and content.endswith('frames'):
-                    self.missing_frame = int(content.split(' ')[2])
+                    self.config['missed_frames'] = int(content.split(' ')[2])
                 elif content.startswith('#'):
                     print(f'ignore header line at {line + 1} : {content}')
 
@@ -149,12 +133,11 @@ class StimlogGit(StimlogBase):
     def _reset_code_version(self, info_value: str):
         """for ### CODE VERSION,  commit hash and tags"""
         info_value = info_value.strip().split(' ')
-        self.code_version = info_value[info_value.index('hash:') + 1]
-        self.code_tags = info_value[info_value.index('tags:') + 1]
-        if self.code_version == 'None':
-            self.code_version = None
-        if self.code_tags == 'None':
-            self.code_tags = None
+        commits = info_value[info_value.index('hash:') + 1]
+        tag = info_value[info_value.index('tags:') + 1]
+
+        self.config['commit_hash'] = commits if commits != 'None' else None
+        self.config['tag'] = tag if tag != 'None' else None
 
     def _reset_log_info(self, code: str, info_value: str):
         try:
@@ -197,32 +180,32 @@ class StimlogGit(StimlogBase):
         remove_code = []
         for code, content in log_data.items():
             if self.log_info[code] in ('Gratings', 'FunctionBased'):
-                self.v_present_time = np.array([it[0] for it in content])
-                self.v_duration = np.array([it[1] for it in content])
-                self.v_contrast = np.array([it[2] for it in content])
-                self.v_ori = np.array([it[3] for it in content])
-                self.v_phase = np.array([it[4] for it in content])
-                self.v_pos = np.array([it[5] for it in content])
-                self.v_size = np.array([it[6] for it in content])
-                self.v_flick = np.array([it[7] for it in content])
-                self.v_interpolate = np.array([it[8] for it in content], dtype=bool)
-                self.v_mask = np.array([it[9] is not None for it in content], dtype=bool)
-                self.v_sf = np.array([it[10] for it in content])
-                self.v_tf = np.array([it[11] for it in content])
-                self.v_opto = np.array([it[12] for it in content], dtype=int)
-                self.v_pattern = np.array([it[13] for it in content])
+                self.time = np.array([it[0] for it in content])
+                self.duration = np.array([it[1] for it in content])
+                self.contrast = np.array([it[2] for it in content])
+                self.ori = np.array([it[3] for it in content])
+                self.phase = np.array([it[4] for it in content])
+                self.pos_xy = np.array([it[5] for it in content])
+                self.size_xy = np.array([it[6] for it in content])
+                self.flick = np.array([it[7] for it in content])
+                self.interpolate = np.array([it[8] for it in content], dtype=bool)
+                self.mask = np.array([it[9] is not None for it in content], dtype=bool)
+                self.sf = np.array([it[10] for it in content])
+                self.tf = np.array([it[11] for it in content])
+                self.opto = np.array([it[12] for it in content], dtype=int)
+                self.pattern = np.array([it[13] for it in content])
 
                 remove_code.append(code)
 
             elif self.log_info[code] == 'PhotoIndicator':
-                self.p_time = np.array([it[0] for it in content])
-                self.p_state = np.array([it[1] for it in content], dtype=bool)
-                self.p_size = np.array([it[2] for it in content])
-                self.p_pos = np.array([it[3] for it in content])
-                self.p_units = np.array([it[4] for it in content])
-                self.p_mode = np.array([it[5] for it in content], dtype=int)
-                self.p_frames = np.array([it[6] for it in content], dtype=int)
-                self.p_enabled = np.array([it[7] for it in content], dtype=bool)
+                self.photo_time = np.array([it[0] for it in content])
+                self.photo_state = np.array([it[1] for it in content], dtype=bool)
+                self.photo_size = np.array([it[2] for it in content])
+                self.photo_pos = np.array([it[3] for it in content])
+                self.photo_units = np.array([it[4] for it in content])
+                self.photo_mode = np.array([it[5] for it in content], dtype=int)
+                self.photo_frames = np.array([it[6] for it in content], dtype=int)
+                self.photo_enable = np.array([it[7] for it in content], dtype=bool)
 
                 remove_code.append(code)
 
@@ -250,20 +233,20 @@ class StimlogGit(StimlogBase):
         :return:
         """
         df = pl.DataFrame().with_columns(
-            pl.Series(self.v_present_time).alias('time'),
-            pl.Series(self.v_duration).alias('duration'),
-            pl.Series(self.v_contrast).alias('contrast'),
-            pl.Series(self.v_ori).alias('ori'),
-            pl.Series(self.v_phase).alias('phase'),
-            pl.Series(self.v_pos).alias('pos'),
-            pl.Series(self.v_size).alias('size'),
-            pl.Series(self.v_flick).alias('flick'),
-            pl.Series(self.v_interpolate).alias('interpolate'),
-            pl.Series(self.v_mask).alias('mask'),
-            pl.Series(self.v_sf).alias('sf'),
-            pl.Series(self.v_tf).alias('tf'),
-            pl.Series(self.v_opto).alias('opto'),
-            pl.Series(self.v_pattern).alias('pattern')
+            pl.Series(self.time).alias('time'),
+            pl.Series(self.duration).alias('duration'),
+            pl.Series(self.contrast).alias('contrast'),
+            pl.Series(self.ori).alias('ori'),
+            pl.Series(self.phase).alias('phase'),
+            pl.Series(self.pos_xy).alias('pos'),
+            pl.Series(self.size_xy).alias('size'),
+            pl.Series(self.flick).alias('flick'),
+            pl.Series(self.interpolate).alias('interpolate'),
+            pl.Series(self.mask).alias('mask'),
+            pl.Series(self.sf).alias('sf'),
+            pl.Series(self.tf).alias('tf'),
+            pl.Series(self.opto).alias('opto'),
+            pl.Series(self.pattern).alias('pattern')
         )
         return df
 
@@ -286,14 +269,14 @@ class StimlogGit(StimlogBase):
         :return:
         """
         df = pl.DataFrame().with_columns(
-            pl.Series(self.p_time).alias('time'),
-            pl.Series(self.p_state).alias('state'),
-            pl.Series(self.p_size).alias('size'),
-            pl.Series(self.p_pos).alias('pos'),
-            pl.Series(self.p_units).alias('units'),
-            pl.Series(self.p_mode).alias('mode'),
-            pl.Series(self.p_frames).alias('frames'),
-            pl.Series(self.p_enabled).alias('enable')
+            pl.Series(self.photo_time).alias('time'),
+            pl.Series(self.photo_state).alias('state'),
+            pl.Series(self.photo_size).alias('size'),
+            pl.Series(self.photo_pos).alias('pos'),
+            pl.Series(self.photo_units).alias('units'),
+            pl.Series(self.photo_mode).alias('mode'),
+            pl.Series(self.photo_frames).alias('frames'),
+            pl.Series(self.photo_enable).alias('enable')
         )
         return df
 
@@ -384,6 +367,26 @@ class StimlogGit(StimlogBase):
         return header.index(field) + 1
 
     @property
+    def pos_x(self) -> np.ndarray:
+        """object center position X. Array[float, P]"""
+        return self.pos_xy[:, 0]
+
+    @property
+    def pos_y(self) -> np.ndarray:
+        """object center position Y. Array[float, P]"""
+        return self.pos_xy[:, 1]
+
+    @property
+    def size_x(self) -> np.ndarray:
+        """object size width. Array[int, P]"""
+        return self.size_xy[:, 0]
+
+    @property
+    def size_y(self) -> np.ndarray:
+        """object size height. Array[int, P]"""
+        return self.size_xy[:, 1]
+
+    @property
     def exp_start_time(self) -> float:
         return self.riglog_data.dat[0, 2] / 1000
 
@@ -393,18 +396,18 @@ class StimlogGit(StimlogBase):
 
     @property
     def stim_start_time(self) -> float:
-        return self.p_time[1] + self.time_offset
+        return float(self.photo_time[1] + self.time_offset)
 
     @property
     def stim_end_time(self) -> float:
-        return self.v_present_time[-1] + self.time_offset
+        return float(self.time[-1] + self.time_offset)
 
     @property
     def stimulus_segment(self) -> np.ndarray:
         # ret = self.riglog_data.screen_event[:, 0].reshape(-1, 2)  # directly use riglog time
         # stimlog bug starting from `diode off`, and ending from `diode True`
         # thus remove first point and add last point manually
-        _p_time = np.concatenate((self.p_time[1:], np.array([self.v_present_time[-1]])))
+        _p_time = np.concatenate((self.photo_time[1:], np.array([self.time[-1]])))
         ret = _p_time.reshape(-1, 2) + self.time_offset
         return ret
 
@@ -464,13 +467,13 @@ def _time_offset(rig: RiglogData,
             # new stimpy might be a negative value (stimlog time value larger than riglog)
             # stimlog bug starting from `diode off`, and ending from `diode True`
             # thus remove first point and add last point manually
-            _p_time = np.concatenate((stm.p_time[1:], np.array([stm.v_present_time[-1]])))
+            _p_time = np.concatenate((stm.photo_time[1:], np.array([stm.time[-1]])))
             offset_t = screen_time[::2] - _p_time[::2]
 
         except ValueError as e:
             fprint(f'number of diode pulse and stimulus mismatch from {e}', vtype='error')
             fprint(f'use the first pulse diff for alignment', vtype='error')
-            offset_t = screen_time[0] - stm.p_time[1]
+            offset_t = screen_time[0] - stm.photo_time[1]
     else:
         raise NotImplementedError('')
 
