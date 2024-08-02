@@ -569,6 +569,7 @@ class TestRiglogParser(unittest.TestCase):
             'act1': 11,
             'opto': 12
         }
+
         self.assertDictEqual(self.RIG.log_config['codes'], res)
 
     def test_csv_fields(self):

@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import abc
 from pathlib import Path
-from typing import Literal, TypeVar, Generic, cast, TypedDict
+from typing import Literal, TypeVar, Generic, cast, TypedDict, Any
 
 import numpy as np
 import polars as pl
 
 from neuralib.typing import PathLike
 from .event import RigEvent, CamEvent
+from .preference import PreferenceDict, load_preferences
 from .session import Session, SessionInfo
-from .stimulus import StimPattern
+from .stimulus import AbstractStimulusPattern
 
 __all__ = [
     'STIMPY_SOURCE_VERSION',
@@ -149,15 +150,6 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
     def _cache_asarray(cls, filepath: Path) -> np.ndarray:
         pass
 
-    @abc.abstractmethod
-    def get_prot_file(self) -> P:
-        """
-        get protocol (TypeVar ``P``)
-
-        :return: :class:`~stimpyp.parser.baseprot.AbstractStimProtocol()`
-        """
-        pass
-
     # ============ #
     # RIGLOG EVENT #
     # ============ #
@@ -172,12 +164,12 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
     @property
     def exp_start_time(self) -> float:
         """experimental start time (in sec)"""
-        return self.dat[0, 2].copy() / 1000
+        return float(self.dat[0, 2].copy() / 1000)
 
     @property
     def exp_end_time(self) -> float:
         """experimental end time (in sec)"""
-        return self.dat[-1, 2].copy() / 1000
+        return float(self.dat[-1, 2].copy() / 1000)
 
     @property
     def total_duration(self) -> float:
@@ -263,13 +255,38 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
         """camera event. including {'facecam', 'eyecam', '1P_cam'} implemented by __getitem__()"""
         return self.CameraEvent(self)
 
+    # ========================= #
+    # Access Other output Files #
+    # ========================= #
+
     @property
-    def stim_prot_file(self) -> Path:
+    def prot_file(self) -> Path:
         """protocol file path"""
         return self.riglog_file.with_suffix('.prot')
 
     @abc.abstractmethod
-    def stimlog_data(self) -> S:
+    def get_protocol(self) -> P:
+        """
+        get protocol (TypeVar ``P``)
+
+        :return: :class:`~stimpyp.parser.baseprot.AbstractStimProtocol()`
+        """
+        pass
+
+    def get_stimulus_type(self) -> str:
+        return self.get_protocol().stimulus_type
+
+    @property
+    def pref_file(self) -> Path:
+        """preferences file path"""
+        return self.riglog_file.with_suffix('.prefs')
+
+    def get_preferences(self) -> PreferenceDict:
+        """get preferences file"""
+        return load_preferences(self.pref_file)
+
+    @abc.abstractmethod
+    def get_stimlog(self) -> S:
         """get stimlog (TypeVar ``S``)
 
         :return: :class:`~stimpyp.parser.baselog.StimlogBase()`
@@ -296,6 +313,86 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
 
     """
 
+    # =========== #
+    # Log Headers #
+    # =========== #
+
+    config: dict[str, Any] = {}
+    """i.e., name, commit hash, missed_frames, ..."""
+
+    log_info: dict[int, str] = {}
+    """i.e., {10: 'vstim', 20: 'stateMachine'}"""
+
+    log_header: dict[int, list[str]] = {}
+    """i.e., {10: ['code','presentTime','iStim', ...], 20: ['code', 'elapsed', 'cycle', ...]}"""
+
+    # =========== #
+    # Common Attr #
+    # =========== #
+
+    time: np.ndarray
+    """acquisition time in sec. Array[float, P]"""
+
+    stim_index: np.ndarray
+    """stimulation index. Array[int, P]"""
+
+    trial_index: np.ndarray
+    """trial index. Array[int, P]"""
+
+    contrast: np.ndarray
+    """stimulus contrast. Array[int, P]. value domain in (0,1)"""
+
+    frame_index: np.ndarray
+    """stimulation frame index, recount every N. Array[int, P]"""
+
+    # ======= #
+    # Grating #
+    # ======= #
+
+    ori: np.ndarray
+    """direction in deg. Array[float, P]"""
+
+    sf: np.ndarray
+    """spatial frequency in cyc/deg. Array[float, P]"""
+
+    tf: np.ndarray
+    """temporal frequency in hz. Array[float, P]"""
+
+    phase: np.ndarray
+    """stimulus phase for each N. Array[float, P]"""
+
+    # ============= #
+    # Function Base #
+    # ============= #
+
+    pos_x: np.ndarray
+    """object center position X. Array[float, P]"""
+
+    pos_y: np.ndarray
+    """object center position Y. Array[float, P]"""
+
+    size_x: np.ndarray
+    """object size width. Array[int, P]"""
+
+    size_y: np.ndarray
+    """object size height. Array[int, P]"""
+
+    # ====== #
+    # Others #
+    # ====== #
+
+    flick: np.ndarray
+    """TODO. Array[int, P]"""
+
+    interpolate: np.ndarray
+    """whether do the interpolate, Array[bool, P]"""
+
+    mask: np.ndarray
+    """TODO. Array[bool|None, P]"""
+
+    pattern: np.ndarray
+    """object pattern. Array[str, P]"""
+
     def __init__(self,
                  riglog: R,
                  file_path: PathLike | None):
@@ -311,6 +408,22 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     def _reset(self) -> None:
         """used for assign attributes"""
         pass
+
+    # ============ #
+    # As Dataframe #
+    # ============ #
+
+    @abc.abstractmethod
+    def get_visual_stim_dataframe(self, **kwargs) -> pl.DataFrame:
+        pass
+
+    @abc.abstractmethod
+    def get_state_machine_dataframe(self) -> pl.DataFrame:
+        pass
+
+    # ========= #
+    # Time Info #
+    # ========= #
 
     @property
     @abc.abstractmethod
@@ -371,13 +484,17 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_stim_pattern(self) -> StimPattern:
-        """get pattern foreach stimulation"""
-        pass
-
-    @abc.abstractmethod
     def get_time_profile(self) -> AbstractStimTimeProfile:
         """get time profile"""
+        pass
+
+    # ================= #
+    # Stim Pattern Info #
+    # ================= #
+
+    @abc.abstractmethod
+    def get_stim_pattern(self, **kwargs) -> AbstractStimulusPattern:
+        """get pattern foreach stimulation"""
         pass
 
 

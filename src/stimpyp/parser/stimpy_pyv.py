@@ -3,19 +3,18 @@ from __future__ import annotations
 import dataclasses
 import re
 from pathlib import Path
-from typing import final
+from typing import final, Any, Final
 
 import attrs
 import numpy as np
 import polars as pl
 from scipy.interpolate import interp1d
 
-from neuralib.typing import PathLike
 from neuralib.util.util_verbose import fprint
-from .baselog import Baselog, LOG_SUFFIX, StimlogBase, AbstractStimTimeProfile
+from .baselog import Baselog, StimlogBase, AbstractStimTimeProfile
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo
-from .stimulus import StimPattern
+from .stimulus import GratingPattern
 from .util import try_casting_number, unfold_stimuli_condition
 
 __all__ = ['PyVlog',
@@ -27,13 +26,63 @@ __all__ = ['PyVlog',
 class PyVlog(Baselog):
     """class for handle the log file (rig event specific) for pyvstim version (vb lab legacy)"""
 
-    def __init__(self,
-                 root_path: PathLike,
-                 log_suffix: LOG_SUFFIX = '.log',
-                 diode_offset: bool = False):
+    log_config: dict[str, Any] = {}
+    log_info: dict[int, str] = {}
+    log_header: dict[int, list[str]] = {}
 
-        super().__init__(root_path, log_suffix, diode_offset)
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, log_suffix='.log', diode_offset=False, **kwargs)
         self.__prot_cache: PyVProtocol | None = None
+
+    def _get_log_config(self) -> dict[str, Any]:
+        """overwrite due to a single unify log"""
+        with open(self.riglog_file) as f:
+            for line in f:
+                line = line.strip()
+
+                if line.startswith('#'):
+
+                    if 'Version' in line:
+                        *_, val = line.split(' ')
+                        self.log_config['version'] = val
+
+                    elif 'commit hash' in line:
+                        heading, commit = line.split(': ')
+                        self.log_config['commit_hash'] = commit
+
+                    elif 'CODES' in line:
+                        heading, content = line.split(': ')
+                        iter_codes = content.split(',')
+                        for pair in iter_codes:
+                            code, num = pair.split('=')
+                            code = code.strip()
+                            value = int(num.strip())
+                            self.log_info[value] = code
+
+                    elif 'VLOG HEADER' in line:
+                        heading, content = line.split(':')
+                        self.log_header[10] = content.split(',')
+
+                    elif 'RIG CSV' in line:
+                        heading, content = line.split(': ')
+                        info = self.log_info.copy()
+                        info.pop(10)
+
+                        for i in info.keys():
+                            self.log_header[i] = content.split(',')
+
+                    elif 'RIG VERSION' in line:
+                        heading, content = line.split(': ')
+                        self.log_config['rig_version'] = content
+
+                    elif 'RIG GIT COMMIT HASH' in line:
+                        heading, content = line.split(': ')
+                        self.log_config['commit_hash'] = content
+
+        self.log_config['source_version'] = 'pyvstim'
+
+        return self.log_config
 
     @classmethod
     def _cache_asarray(cls, filepath: Path) -> np.ndarray:
@@ -75,12 +124,12 @@ class PyVlog(Baselog):
 
     # ===== #
 
-    def stimlog_data(self) -> 'StimlogPyVStim':
+    def get_stimlog(self) -> 'StimlogPyVStim':
         return StimlogPyVStim(self)
 
-    def get_prot_file(self) -> PyVProtocol:
+    def get_protocol(self) -> PyVProtocol:
         if self.__prot_cache is None:
-            self.__prot_cache = PyVProtocol.load(self.stim_prot_file)
+            self.__prot_cache = PyVProtocol.load(self.prot_file)
 
         return self.__prot_cache
 
@@ -105,54 +154,76 @@ class StimlogPyVStim(StimlogBase):
 
     """
 
-    v_present_time: np.ndarray
-    """(P,) in ms"""
-    v_stim: np.ndarray
-    """(P,), stim type index. value from 1 to S"""
-    v_trial: np.ndarray
-    """(P,) number of trial. value from 1 to R. *last is 1, reset?"""
-    v_frame: np.ndarray
-    """(P,), value 0, 1, 2... TBD"""
-    v_blank: np.ndarray
-    """(P,). whether is background only. 0: stim display, 1: no stim"""
-    v_contrast: np.ndarray
-    """(P, ) background contrast, 0 to 1?"""
-    v_pos_x: np.ndarray
-    """(P, ) display pos x"""
-    v_pos_y: np.ndarray
-    """(P, ) display pos y"""
-    v_ap_x: np.ndarray
-    """(P, ) stim center x"""
-    v_ap_y: np.ndarray
-    """(P, ) stim center y"""
-    v_indicator_flag: np.ndarray
-    """(P,). photo-indicator, for stim-onset. 1: stim display, 0: no stim"""
+    frame: np.ndarray
+    """TBD. value domain (-2, -1, 0, 1) ? Array[int, P] """
+
+    blank: np.ndarray
+    """If it is background only. 0: stim display, 1: no stim. Array[int, P]"""
+
+    disp_x: np.ndarray
+    """TBD. display pos x ? Array[int, P]"""
+
+    disp_y: np.ndarray
+    """TBD. display pos y ? Array[int, P]"""
+
+    photo_state: np.ndarray
+    """photo diode on-off. Array[int, P]. value domain in (0,1)"""
+
     v_duino_time: np.ndarray
-    """(P,). extrapolate duinotime from screen indicator. sync arduino time in sec"""
+    """extrapolate duinotime from screen indicator. sync arduino time in sec. Array[float, P]"""
 
     def __init__(self, riglog: 'PyVlog'):
         super().__init__(riglog, file_path=None)
+
+        self.config: Final[dict[str, Any]] = riglog.log_config
+        self.log_info: Final[dict[int, str]] = riglog.log_info
+        self.log_header: Final[dict[int, list[str]]] = riglog.log_header
+
         self._reset()
 
     def _reset(self):
+        self._reset_values()
+
+    def _reset_values(self):
         _attrs = (
-            'v_present_time',
-            'v_stim',
-            'v_trial',
-            'v_frame',
-            'v_blank',
-            'v_contrast',
-            'v_pos_x',
-            'v_pos_y',
-            'v_ap_x',
-            'v_ap_y',
-            'v_indicator_flag'
+            'time',
+            'stim_index',
+            'trial_index',
+            'frame',
+            'blank',
+            'contrast',
+            'disp_x',
+            'disp_y',
+            'pos_x',
+            'pos_y',
+            'photo_state'
         )
         code = self.riglog_data.dat[:, 0] == 10
         for i, it in enumerate(self.riglog_data.dat[code, 1:].T):
             setattr(self, f'{_attrs[i]}', it)
 
         self.v_duino_time = self._get_stim_duino_time(self.riglog_data.dat[code, -1].T)
+
+    def get_visual_stim_dataframe(self, **kwargs) -> pl.DataFrame:
+        headers = self.log_header[10][1:]
+
+        return pl.DataFrame(
+            np.vstack([self.time / 1000,
+                       self.stim_index,
+                       self.trial_index,
+                       self.frame,
+                       self.blank,
+                       self.contrast,
+                       self.disp_x,
+                       self.disp_y,
+                       self.pos_x,
+                       self.pos_y,
+                       self.photo_state]),
+            schema=headers
+        )
+
+    def get_state_machine_dataframe(self):
+        raise RuntimeError('no info in pyvstim version')
 
     def _get_stim_duino_time(self, indicator_flag: np.ndarray) -> np.ndarray:
         """extrapolate duinotime from screen indicator. sync arduino time in (P,) sec"""
@@ -168,7 +239,7 @@ class StimlogPyVStim(StimlogBase):
 
     @property
     def exp_start_time(self) -> float:
-        return self.v_duino_time[0]
+        return float(self.v_duino_time[0])
 
     @property
     def stimulus_segment(self) -> np.ndarray:
@@ -182,11 +253,11 @@ class StimlogPyVStim(StimlogBase):
         """directly used interpolation using diode signal already"""
         return 0
 
-    def get_stim_pattern(self) -> StimPattern:
+    def get_stim_pattern(self) -> GratingPattern:
         raise NotImplementedError('')
 
     def exp_end_time(self) -> float:
-        return self.v_duino_time[-1]
+        return float(self.v_duino_time[-1])
 
     # =========== #
     # retinotopic #
@@ -194,7 +265,7 @@ class StimlogPyVStim(StimlogBase):
 
     @property
     def stim_loc(self) -> np.ndarray:
-        return np.vstack([self.v_ap_x, self.v_ap_y]).T
+        return np.vstack([self.pos_x, self.pos_y]).T
 
     @property
     def avg_refresh_rate(self) -> float:
@@ -203,8 +274,8 @@ class StimlogPyVStim(StimlogBase):
 
     def plot_stim_animation(self):
         from neuralib.plot.animation import plot_scatter_animation
-        plot_scatter_animation(self.v_ap_x,
-                               self.v_ap_y,
+        plot_scatter_animation(self.pos_x,
+                               self.pos_y,
                                self.v_duino_time,
                                step=int(self.avg_refresh_rate))  # TODO check refresh rate?
 
@@ -221,7 +292,7 @@ class StimTimeProfile(AbstractStimTimeProfile):
         ret = {
             'n_trials': self.n_trials,
             'foreach_trial_time': np.diff(self.get_time_interval(), axis=1),
-            'n_cycle:': self.stim.riglog_data.get_prot_file().get_loops_expr().n_cycles
+            'n_cycle:': self.stim.riglog_data.get_protocol().get_loops_expr().n_cycles
         }
         return repr(ret)
 
@@ -230,8 +301,8 @@ class StimTimeProfile(AbstractStimTimeProfile):
     @property
     def unique_stimuli_set(self) -> pl.DataFrame:
         df = pl.DataFrame({
-            'i_stims': self.stim.v_stim.astype(int),
-            'i_trials': self.stim.v_trial.astype(int)
+            'i_stims': self.stim.stim_index.astype(int),
+            'i_trials': self.stim.trial_index.astype(int)
         }).unique(maintain_order=True)
         return df
 
@@ -250,8 +321,8 @@ class StimTimeProfile(AbstractStimTimeProfile):
         return self.unique_stimuli_set.get_column('i_trials').to_numpy()
 
     def get_time_interval(self) -> np.ndarray:
-        ustims = self.stim.v_stim * (1 - self.stim.v_blank)
-        utrials = self.stim.v_trial * (1 - self.stim.v_blank)
+        ustims = self.stim.stim_index * (1 - self.stim.blank)
+        utrials = self.stim.trial_index * (1 - self.stim.blank)
 
         ret = np.zeros([self.n_trials, 2])
         for i, (st, tr) in enumerate(self.unique_stimuli_set.iter_rows()):
@@ -266,12 +337,12 @@ class StimTimeProfile(AbstractStimTimeProfile):
 # ======== #
 
 class PyVProtocol(AbstractStimProtocol):
-    """
+    r"""
     class for handle the protocol file for pyvstim version (vb lab legacy)
 
     `Dimension parameters`:
 
-        N = number of visual stimulation (on-off pairs) = (T * S)
+        N = number of visual stimulation (on-off pairs) = (T \* S)
 
         T = number of trials
 
@@ -281,7 +352,8 @@ class PyVProtocol(AbstractStimProtocol):
     """
 
     @classmethod
-    def load(cls, file: Path | str, *,
+    def load(cls,
+             file: Path | str, *,
              cast_numerical_opt=True) -> 'PyVProtocol':
 
         file = Path(file)

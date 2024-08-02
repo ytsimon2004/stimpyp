@@ -1173,7 +1173,7 @@ class TestStimlogParser(unittest.TestCase):
         cls.FILEPATH.unlink()
 
     def test_code_version(self):
-        self.assertEqual(self.STIM.code_version, '6d30281')
+        self.assertEqual(self.STIM.config['commit_hash'], '6d30281')
 
     def test_log_header(self):
         self.assertDictEqual(self.STIM.log_info, {10: 'vstim', 20: 'stateMachine'})
@@ -1213,7 +1213,7 @@ class TestStimlogParser(unittest.TestCase):
             1630.633046, 1630.649848, 1630.666606, 1630.683355, 1630.699972, 1630.716764, 1630.733468, 1630.750187,
             1630.766871, 1630.783614, 1630.800333, 1630.81704
         ])
-        assert_array_equal(self.STIM.v_present_time, res)
+        assert_array_equal(self.STIM.time, res)
 
     def test_visual_stim_idx(self):
         res = np.array([
@@ -1226,10 +1226,10 @@ class TestStimlogParser(unittest.TestCase):
             27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
             37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37
         ])
-        assert_array_equal(self.STIM.v_stim, res)
+        assert_array_equal(self.STIM.stim_index, res)
 
     def test_visual_trial_index(self):
-        self.assertTrue(np.all(self.STIM.v_trial == 2))
+        self.assertTrue(np.all(self.STIM.trial_index == 2))
 
     def test_visual_photo(self):
         res = np.array([
@@ -1241,7 +1241,7 @@ class TestStimlogParser(unittest.TestCase):
             0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
         ])
 
-        assert_array_equal(self.STIM.v_photo, res)
+        assert_array_equal(self.STIM.photo_state, res)
 
     def test_visual_contrast(self):
         res = np.array([
@@ -1257,7 +1257,7 @@ class TestStimlogParser(unittest.TestCase):
             1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0
         ])
 
-        assert_array_equal(self.STIM.v_contrast, res)
+        assert_array_equal(self.STIM.contrast, res)
 
     def test_visual_ori(self):
         res = np.array([
@@ -1270,7 +1270,7 @@ class TestStimlogParser(unittest.TestCase):
             90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90,
             -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
         ])
-        assert_array_equal(self.STIM.v_ori, res)
+        assert_array_equal(self.STIM.ori, res)
 
     def test_visual_sf(self):
         res = np.array([
@@ -1288,7 +1288,7 @@ class TestStimlogParser(unittest.TestCase):
             -1.0, -1.0, -1.0, -1.0, -1.0, -1.0
         ])
 
-        assert_array_equal(self.STIM.v_sf, res)
+        assert_array_equal(self.STIM.sf, res)
 
     def test_visual_phase(self):
         res = np.array([
@@ -1310,7 +1310,7 @@ class TestStimlogParser(unittest.TestCase):
             2.916667, 2.933333, 2.95, 2.966667, 2.983333, 2.983333, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
             -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0
         ])
-        assert_array_equal(self.STIM.v_phase, res)
+        assert_array_equal(self.STIM.phase, res)
 
     def test_visual_frame_idx(self):
         res = np.array([
@@ -1325,28 +1325,28 @@ class TestStimlogParser(unittest.TestCase):
             -1, -1, -1, -1, -1, -1, -1, -1, -1
         ])
 
-        assert_array_equal(self.STIM.v_frame_idx, res)
+        assert_array_equal(self.STIM.frame_index, res)
 
     def test_state_on_v(self):
         assert_array_equal(self.STIM.s_on_v, np.array([1627.557217, 1630.549527, 1630.566199]))
 
     def test_state_present_time(self):
-        assert_array_equal(self.STIM.s_present_time, np.array([1628.143, 1631.154, 1631.154]))
+        assert_array_equal(self.STIM.state_time, np.array([1628.143, 1631.154, 1631.154]))
 
     def test_state_cycle(self):
-        assert_array_equal(self.STIM.s_cycle, np.array([0, 0, 0]))
+        assert_array_equal(self.STIM.state_cycle, np.array([0, 0, 0]))
 
     def test_new_state(self):
-        assert_array_equal(self.STIM.s_new_state, np.array([2, 0, 1]))
+        assert_array_equal(self.STIM.state_new_state, np.array([2, 0, 1]))
 
     def test_old_state(self):
-        assert_array_equal(self.STIM.s_old_state, np.array([1, 2, 0]))
+        assert_array_equal(self.STIM.state_old_state, np.array([1, 2, 0]))
 
     def test_state_elapsed(self):
-        assert_array_equal(self.STIM.s_state_elapsed, np.array([2.012, 3.01, 0.]))
+        assert_array_equal(self.STIM.state_elapsed, np.array([2.012, 3.01, 0.]))
 
     def test_state_trial_type(self):
-        assert_array_equal(self.STIM.s_trial_type, np.array([0, 0, 0]))
+        assert_array_equal(self.STIM.state_trial_type, np.array([0, 0, 0]))
 
 
 if __name__ == '__main__':
