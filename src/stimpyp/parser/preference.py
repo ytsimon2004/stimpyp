@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TypedDict, Literal
+from typing import TypedDict, Literal, Union
 
 from neuralib.typing import PathLike
 
@@ -64,7 +64,7 @@ class NetworkControllerDict(TypedDict, total=False):
 
 
 class RigDict(TypedDict):
-    port: str | Literal['dummy']
+    port: Union[str, Literal['dummy']]
 
 
 class PreferenceDict(TypedDict, total=False):
@@ -74,21 +74,21 @@ class PreferenceDict(TypedDict, total=False):
     defaultExperimentType: str
     default_imaging_mode: str
 
-    logFolder: str | Path
-    protocolsFolder: str | Path
-    controllerFolder: str | Path
-    stimsFolder: str | Path
-    tmpFolder: str | Path  # git only
+    logFolder: PathLike
+    protocolsFolder: PathLike
+    controllerFolder: PathLike
+    stimsFolder: PathLike
+    tmpFolder: PathLike  # git only
 
     monitor: list[MonitorDict]
-    use_monitor: int | list[int]
+    use_monitor: Union[int, list[int]]
 
     # PanoDisplay
     vr_flag: bool
-    vrFolder: str | Path
+    vrFolder: PathLike
 
     # PyGameVRDisplay
-    textureFolder: str | Path
+    textureFolder: PathLike
     raycaster: Literal['default', 'numpy', 'numba']
 
     # Photo indicator
