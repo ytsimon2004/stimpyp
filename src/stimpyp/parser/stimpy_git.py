@@ -8,8 +8,8 @@ import numpy as np
 import polars as pl
 
 from neuralib.typing import PathLike
+from neuralib.util.deprecation import deprecated_func
 from neuralib.util.util_verbose import fprint
-from neuralib.util.utils import future_deprecate
 from .baselog import StimlogBase
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimpy_core import RiglogData, StimpyProtocol
@@ -443,7 +443,7 @@ class StimlogGit(StimlogBase):
 
 # ========== #
 
-@future_deprecate(reason='generalized, to sequential offset method')
+@deprecated_func(remarks='generalized, to sequential offset method')
 def _time_offset(rig: RiglogData,
                  stm: StimlogGit,
                  diode_offset=True) -> tuple[float, float]:
