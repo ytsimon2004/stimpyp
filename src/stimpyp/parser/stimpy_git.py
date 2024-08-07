@@ -9,7 +9,7 @@ import polars as pl
 
 from neuralib.typing import PathLike
 from neuralib.util.deprecation import deprecated_func
-from neuralib.util.util_verbose import fprint
+from neuralib.util.verbose import fprint
 from .baselog import StimlogBase
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimpy_core import RiglogData, StimpyProtocol

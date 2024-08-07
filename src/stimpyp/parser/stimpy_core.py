@@ -10,7 +10,7 @@ from typing_extensions import Self
 
 from neuralib.plot.figure import plot_figure
 from neuralib.typing import PathLike
-from neuralib.util.util_verbose import fprint
+from neuralib.util.verbose import fprint
 from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo, get_protocol_sessions

@@ -10,7 +10,7 @@ import polars as pl
 from scipy.interpolate import interp1d
 from typing_extensions import Self
 
-from neuralib.util.util_verbose import fprint
+from neuralib.util.verbose import fprint
 from neuralib.util.utils import uglob
 from .baselog import CAMERA_TYPE, Baselog
 from .stimpy_core import RiglogData

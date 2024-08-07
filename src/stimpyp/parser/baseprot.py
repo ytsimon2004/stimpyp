@@ -8,7 +8,7 @@ import numpy as np
 import polars as pl
 from polars import ColumnNotFoundError
 
-from neuralib.util.util_verbose import fprint, printdf
+from neuralib.util.verbose import fprint, printdf
 from .baselog import STIMPY_SOURCE_VERSION
 
 __all__ = ['AbstractStimProtocol']

@@ -10,7 +10,7 @@ import numpy as np
 import polars as pl
 from scipy.interpolate import interp1d
 
-from neuralib.util.util_verbose import fprint
+from neuralib.util.verbose import fprint
 from .baselog import Baselog, StimlogBase, AbstractStimTimeProfile
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo
