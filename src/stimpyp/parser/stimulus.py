@@ -4,7 +4,7 @@ import abc
 from typing import NamedTuple, Iterable, TYPE_CHECKING, TypeVar, Any, Generic
 
 import numpy as np
-from typing_extensions import TypeAlias, Self
+from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from stimpyp.parser.baselog import R
@@ -74,9 +74,10 @@ class FunctionStim(NamedTuple):
 # ================ #
 
 S = TypeVar('S')  # Individual Stim
+P = TypeVar('P')  # pattern
 
 
-class AbstractStimulusPattern(Generic[S], metaclass=abc.ABCMeta):
+class AbstractStimulusPattern(Generic[P, S], metaclass=abc.ABCMeta):
     """
     Abstract Stimulus Pattern
 
@@ -94,7 +95,8 @@ class AbstractStimulusPattern(Generic[S], metaclass=abc.ABCMeta):
 
     def __init__(self,
                  time: np.ndarray,
-                 contrast: np.ndarray, *,
+                 contrast: np.ndarray,
+                 *,
                  duration: np.ndarray | None = None):
         """
 
@@ -107,7 +109,7 @@ class AbstractStimulusPattern(Generic[S], metaclass=abc.ABCMeta):
         self.duration = duration
 
     @classmethod
-    def of(cls, rig: 'R') -> Self:
+    def of(cls, rig: 'R') -> P:
         """
         init from Baselog children class
 
@@ -133,11 +135,13 @@ class GratingPattern(AbstractStimulusPattern):
     tf: np.ndarray
     """temporal frequency in hz Array[int, N]"""
 
-    def __init__(self, time: np.ndarray,
+    def __init__(self,
+                 time: np.ndarray,
                  contrast: np.ndarray,
                  direction: np.ndarray,
                  sf: np.ndarray,
-                 tf: np.ndarray, *,
+                 tf: np.ndarray,
+                 *,
                  duration: np.ndarray | None = None):
         """
 
