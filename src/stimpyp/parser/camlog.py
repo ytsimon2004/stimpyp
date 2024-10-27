@@ -10,8 +10,8 @@ import polars as pl
 from scipy.interpolate import interp1d
 from typing_extensions import Self
 
-from neuralib.util.verbose import fprint
 from neuralib.util.utils import uglob
+from neuralib.util.verbose import fprint
 from .baselog import CAMERA_TYPE, Baselog
 from .stimpy_core import RiglogData
 from .stimpy_pyv import PyVlog
@@ -139,27 +139,33 @@ class LabCamlog(AbstractCamlog):
             cls.time_info.append(content)
 
     def get_camera_time(self, log: Baselog,
-                        cam_name: CAMERA_TYPE = '1P_cam') -> np.ndarray:
+                        cam_name: CAMERA_TYPE = '1P_cam',
+                        interpolate: bool = True) -> np.ndarray:
         """Interpolate cameralog frames to those recorded by pyvstim.
 
         :param log: :class:`~stimpyp.parser.baselog.Baselog`
         :param cam_name: camera name
+        :param interpolate: Whether do the interpolation according to the number of log event
         :return: 1D camera time array in sec
         """
         if cam_name not in get_args(CAMERA_TYPE):
             raise ValueError(f'{cam_name} unknown')
 
-        cam_pulses = len(log.camera_event[cam_name])
+        camera_event = log.camera_event[cam_name]
+        cam_pulses = len(camera_event)
 
         if cam_pulses != self.frame_id[-1]:
             fprint(f'Loss frame between riglog[{cam_pulses}] vs camlog[{self.frame_id[-1]}]',
                    vtype='warning')
 
-        return interp1d(
-            log.camera_event[cam_name].value,
-            log.camera_event[cam_name].time,
-            fill_value='extrapolate'
-        )(self.frame_id)
+        if interpolate:
+            return interp1d(
+                camera_event.value,
+                camera_event.time,
+                fill_value='extrapolate'
+            )(self.frame_id)
+        else:
+            return camera_event.time
 
 
 # ====== #

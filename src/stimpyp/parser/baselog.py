@@ -483,9 +483,24 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
         """time (in sec) to sync stimlog time to riglog"""
         pass
 
+    # =========================== #
+    # Stim Trial/Index/Cycle Info #
+    # =========================== #
+
+    @property
+    def n_cycles(self) -> list[int]:
+        """Number of cycle for each trial"""
+        raise NotImplementedError('')
+
+    @property
     @abc.abstractmethod
-    def get_time_profile(self) -> AbstractStimTimeProfile:
-        """get time profile"""
+    def profile_dataframe(self) -> pl.DataFrame:
+        """
+        Dataframe with columns:
+
+        - stim type index: ``i_stims``
+        - trial index: ``i_trials``
+        """
         pass
 
     # ================= #
