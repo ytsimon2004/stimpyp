@@ -20,7 +20,6 @@ __all__ = [
     #
     'Baselog',
     'StimlogBase',
-    'AbstractStimTimeProfile'
 ]
 
 STIMPY_SOURCE_VERSION = Literal['pyvstim', 'stimpy-bit', 'stimpy-git', 'debug']
@@ -58,7 +57,8 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
     def __init__(self,
                  root_path: PathLike,
                  log_suffix: LOG_SUFFIX,
-                 diode_offset: bool = True):
+                 diode_offset: bool = True,
+                 reset_mapping: dict[int, list[str]] | None = None):
         """
         :param root_path: log file path or log directory
         :param log_suffix: log file suffix
@@ -80,6 +80,7 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
 
         #
         self._diode_offset = diode_offset
+        self._reset_mapping = reset_mapping
 
     @classmethod
     def _find_logfile(cls,
@@ -395,18 +396,27 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
 
     def __init__(self,
                  riglog: R,
-                 file_path: PathLike | None):
+                 file_path: PathLike | None,
+                 reset_mapping: dict[int, list[str]] | None = None):
         """
         :param riglog: :class:`Baselog`
         :param file_path: filepath of stimlog. could be None if shared log (pyvstim case)
+        :param reset_mapping: Customized mapping for ``reset()``
+            - key: corresponding to :attr:`log_header`
+            - value: list of field, should be the same name as class annotations
         """
         self.riglog_data = riglog
         if file_path is not None:
             self.stimlog_file = Path(file_path)
 
+        self._reset_mapping = reset_mapping
+
     @abc.abstractmethod
     def _reset(self) -> None:
         """used for assign attributes"""
+        pass
+
+    def _reset_cust_mapping(self):
         pass
 
     # ============ #
@@ -490,7 +500,7 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     @property
     def n_cycles(self) -> list[int]:
         """Number of cycle for each trial"""
-        raise NotImplementedError('')
+        raise [1]
 
     @property
     @abc.abstractmethod
@@ -510,47 +520,4 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_stim_pattern(self, **kwargs) -> AbstractStimulusPattern:
         """get pattern foreach stimulation"""
-        pass
-
-
-# ================= #
-# Stim Time Profile #
-# ================= #
-
-class AbstractStimTimeProfile(Generic[S], metaclass=abc.ABCMeta):
-    """
-    ABC for stimulation time profile
-
-    `Dimension parameters`:
-
-        N = number of visual stimulation (on-off pairs) = (T * S)
-
-        T = number of trials
-
-        S = number of Stim Type
-
-        C = number of Cycle
-
-    """
-    stim: S
-
-    @property
-    @abc.abstractmethod
-    def unique_stimuli_set(self) -> pl.DataFrame:
-        """
-        rows: number equal to N
-
-        fields: i_stim (index of stim type); i_trials (repetitive trials in the given stim type)
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def n_trials(self) -> int:
-        """T"""
-        pass
-
-    @abc.abstractmethod
-    def get_time_interval(self) -> np.ndarray:
-        """(N, 2) with (start, end). suppose the same as :attr:`stimpyp.parser.baselog.StimlogBase.stimulus_segment`"""
         pass

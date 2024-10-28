@@ -10,6 +10,7 @@ from typing_extensions import Self
 
 from neuralib.plot.figure import plot_figure
 from neuralib.typing import PathLike
+from neuralib.util.utils import cls_hasattr
 from neuralib.util.verbose import fprint
 from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
@@ -81,13 +82,13 @@ class RiglogData(Baselog):
         return self.riglog_file.with_suffix('.stimlog')
 
     def get_stimlog(self) -> StimlogBase:
-        if self.__stimlog_cache is None:
-            if self.version == 'stimpy-git':
+        match self.__stimlog_cache, self.version:
+            case (None, 'stimpy-git'):
                 from .stimpy_git import StimlogGit
-                self.__stimlog_cache = StimlogGit(self, self.stimlog_file, self._diode_offset)
-            elif self.version == 'stimpy-bit':
-                self.__stimlog_cache = Stimlog(self, self.stimlog_file, self._diode_offset)
-            else:
+                self.__stimlog_cache = StimlogGit(self, self.stimlog_file, self._reset_mapping, self._diode_offset)
+            case (None, 'stimpy-bit'):
+                self.__stimlog_cache = Stimlog(self, self.stimlog_file, self._reset_mapping, self._diode_offset)
+            case (None, _):
                 raise ValueError(f'unknown version: {self.version}')
 
         return self.__stimlog_cache
@@ -120,6 +121,9 @@ class Stimlog(StimlogBase):
     photo_state: np.ndarray
     """photo diode on-off. Array[int, P]. value domain in (0,1)"""
 
+    indicator_flag: np.ndarray
+    """accumulated and zero foreach stim. Array[int, P]. value domain in (1, ...)"""
+
     # ========================================= #
     # StateMachine logging (start from code 20) #
     # ========================================= #
@@ -148,6 +152,7 @@ class Stimlog(StimlogBase):
     def __init__(self,
                  riglog: RiglogData,
                  file_path: PathLike,
+                 reset_mapping: dict[int, list[str]] | None = None,
                  diode_offset: bool = True,
                  sequential_offset: bool = True):
         """
@@ -157,7 +162,7 @@ class Stimlog(StimlogBase):
         :param sequential_offset: do the sequential offset throughout the recording.
         """
 
-        super().__init__(riglog, file_path)
+        super().__init__(riglog, file_path, reset_mapping)
         self.diode_offset = diode_offset
 
         # diode
@@ -173,12 +178,94 @@ class Stimlog(StimlogBase):
             fprint(f'no riglog init, for only testing, some methods might causes problem', vtype='warning')
             return self._reset_gratings()  # testing
 
-        if stim_type == 'gratings':
-            self._reset_gratings()
-        elif stim_type == 'functions':
-            self._reset_functions()
-        else:
-            raise NotImplementedError(f'{stim_type}')
+        match stim_type, self._reset_mapping:
+            case ('gratings', None):
+                self._reset_gratings()
+            case ('functions', None):
+                self._reset_functions()
+            case (_, mapping) if mapping is not None:
+                self._reset_cust_mapping()
+            case _:
+                raise NotImplementedError('')
+
+    def _eager_comment_info(self):
+        """Eager get the #comment_info"""
+        with self.stimlog_file.open() as _f:
+            for number, line in enumerate(_f):
+                line = line.strip()
+
+                if len(line) == 0:
+                    continue
+
+                if line.startswith('#'):
+                    self._reset_comment_info(line)
+
+    def _reset_cust_mapping(self):
+        def _cast(s) -> int | float:
+            try:
+                v = float(s)
+                if v.is_integer():
+                    return int(v)
+                else:
+                    return v
+            except (ValueError, IndexError):
+                return -1
+
+        self._eager_comment_info()
+        vlog = [[] for _ in range(len(self.log_header[10]) - 1)]  # without code
+        state = [[] for _ in range(len(self.log_header[20]) - 1)]  # without code
+
+        with self.stimlog_file.open() as _f:
+            for number, line in enumerate(_f):
+                line = line.strip()
+
+                if len(line) == 0 or line.startswith('#'):
+                    continue
+
+                part = line.split(',')
+                try:
+                    code = int(part[0])
+                    if code == 10:
+                        for i in range(len(vlog)):
+                            try:
+                                vlog[i].append(_cast(part[i + 1]))
+                            except IndexError:
+                                vlog[i].append(-1)
+                    elif code == 20:
+                        for i in range(len(state)):
+                            state[i].append(_cast(part[i + 1]))
+                    else:
+                        raise ValueError(f'unknown code: {code}')
+
+                except BaseException as e:
+                    raise RuntimeError(f'error parsing line: {line} in line:{number}, {repr(e)}')
+
+        #
+        for code, fields in self._reset_mapping.items():
+            if code == 10:
+                for i, f in enumerate(fields):
+                    setattr(self, f, np.array(vlog[i]))
+            elif code == 20:
+                for i, f in enumerate(fields):
+                    v = np.array(state[i])
+                    if f in ('state_time', 'state_elapsed'):  # to sec
+                        v = v / 1000
+                    setattr(self, f, v)
+            else:
+                raise ValueError(f'unknown code: {code}')
+
+        self._check_mapping()
+
+    def _check_mapping(self) -> None:
+        for code, fields in self._reset_mapping.items():
+            # length check
+            if len(fields) != len(self.log_header[code]) - 1:
+                raise ValueError(f'reset mapping number mismatch: should follow the order: {self.log_header[code]}')
+
+            # name check
+            for f in fields:
+                if not cls_hasattr(Stimlog, f):
+                    raise ValueError(f'reset mapping need to be the one of the annotations: "{f}"')
 
     def _reset_gratings(self):
         time = []
@@ -439,37 +526,41 @@ class Stimlog(StimlogBase):
         headers = self.log_header[10][1:]
         mask = self.frame_index != -1 if stim_only else slice(None, None)
 
-        if stim_type == 'gratings':
-            return pl.DataFrame(
-                np.vstack([self.time[mask],
-                           self.stim_index[mask],
-                           self.trial_index[mask],
-                           self.photo_state[mask],
-                           self.contrast[mask],
-                           self.ori[mask],
-                           self.sf[mask],
-                           self.phase[mask],
-                           self.frame_index[mask]]),
-                schema=headers
-            )
+        match stim_type, self._reset_mapping:
+            case ('gratings', None):
+                return pl.DataFrame(
+                    np.vstack([self.time[mask],
+                               self.stim_index[mask],
+                               self.trial_index[mask],
+                               self.photo_state[mask],
+                               self.contrast[mask],
+                               self.ori[mask],
+                               self.sf[mask],
+                               self.phase[mask],
+                               self.frame_index[mask]]),
+                    schema=headers
+                )
 
-        elif stim_type == 'functions':
-            return pl.DataFrame(
-                np.vstack([self.time[mask],
-                           self.stim_index[mask],
-                           self.trial_index[mask],
-                           self.photo_state[mask],
-                           self.contrast[mask],
-                           self.pos_x[mask],
-                           self.pos_y[mask],
-                           self.size_x[mask],
-                           self.size_y[mask],
-                           self.frame_index[mask]]),
-                schema=headers
-            )
+            case ('functions', None):
+                return pl.DataFrame(
+                    np.vstack([self.time[mask],
+                               self.stim_index[mask],
+                               self.trial_index[mask],
+                               self.photo_state[mask],
+                               self.contrast[mask],
+                               self.pos_x[mask],
+                               self.pos_y[mask],
+                               self.size_x[mask],
+                               self.size_y[mask],
+                               self.frame_index[mask]]),
+                    schema=headers
+                )
 
-        else:
-            raise NotImplementedError('')
+            case _:
+                return pl.DataFrame(
+                    np.vstack([getattr(self, f)[mask] for f in self._reset_mapping[10]]),
+                    schema=headers
+                )
 
     def get_state_machine_dataframe(self) -> pl.DataFrame:
         """
@@ -490,15 +581,22 @@ class Stimlog(StimlogBase):
         :return:
         """
         headers = self.log_header[20][1:]
-        return pl.DataFrame(
-            np.vstack([self.state_time,
-                       self.state_cycle,
-                       self.state_new_state,
-                       self.state_old_state,
-                       self.state_elapsed,
-                       self.state_trial_type]),
-            schema=headers
-        )
+
+        if self._reset_mapping is None:
+            return pl.DataFrame(
+                np.vstack([self.state_time,
+                           self.state_cycle,
+                           self.state_new_state,
+                           self.state_old_state,
+                           self.state_elapsed,
+                           self.state_trial_type]),
+                schema=headers
+            )
+        else:
+            return pl.DataFrame(
+                np.vstack([getattr(self, f) for f in self._reset_mapping[20]]),
+                schema=headers
+            )
 
     @property
     def exp_start_time(self) -> float:
@@ -611,8 +709,15 @@ class Stimlog(StimlogBase):
         else:
             raise NotImplementedError('')
 
-    def get_time_profile(self):
-        raise NotImplementedError('')
+    @property
+    def profile_dataframe(self) -> pl.DataFrame:
+        x = np.logical_and(self.stim_index >= 0, self.trial_index != np.max(self.trial_index))  # TOOD check
+        stim_index = self.stim_index[x]
+        trial_index = self.trial_index[x]
+        return pl.DataFrame({
+            'i_stims': stim_index.astype(int),
+            'i_trials': trial_index.astype(int)
+        }).unique(maintain_order=True)
 
 
 # ================= #
