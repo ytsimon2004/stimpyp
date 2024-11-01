@@ -1,7 +1,7 @@
 [project]
 name = "stimpyp"
-version = "0.0.5"
-requires-python = ">=3.9"
+version = "0.0.6"
+requires-python = ">=3.10"
 description = "utilities parser for the Stimpy module"
 authors = [
     { name = "Yu-Ting Wei", email = "ytsimon2004@gmail.com" }
@@ -10,7 +10,7 @@ license = { file = "LICENSE" }
 readme = "README.md"
 keywords = ["Neuroscience", "visual neuroscience", "virtual reality"]
 classifiers = [
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "License :: OSI Approved :: BSD License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
