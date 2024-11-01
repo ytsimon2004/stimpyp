@@ -5,13 +5,12 @@ import re
 from pathlib import Path
 from typing import final, Any, Final
 
-import attrs
 import numpy as np
 import polars as pl
 from scipy.interpolate import interp1d
 
 from neuralib.util.verbose import fprint
-from .baselog import Baselog, StimlogBase, AbstractStimTimeProfile
+from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo
 from .stimulus import GratingPattern
@@ -243,7 +242,16 @@ class StimlogPyVStim(StimlogBase):
 
     @property
     def stimulus_segment(self) -> np.ndarray:
-        return self.get_time_profile().get_time_interval()
+        ustims = self.stim_index * (1 - self.blank)
+        utrials = self.trial_index * (1 - self.blank)
+
+        n_trials = self.profile_dataframe.shape[0]
+        ret = np.zeros([n_trials, 2])
+        for i, (st, tr) in enumerate(self.profile_dataframe.iter_rows()):
+            idx = np.where((ustims == st) & (utrials == tr))[0]
+            ret[i, :] = self.v_duino_time[[idx[0], idx[-1]]]
+
+        return ret
 
     def session_trials(self) -> dict[Session, SessionInfo]:
         raise NotImplementedError('')
@@ -279,57 +287,16 @@ class StimlogPyVStim(StimlogBase):
                                self.v_duino_time,
                                step=int(self.avg_refresh_rate))  # TODO check refresh rate?
 
-    def get_time_profile(self) -> StimTimeProfile:
-        return StimTimeProfile(self)
-
-
-@final
-@attrs.frozen(repr=False, str=False)
-class StimTimeProfile(AbstractStimTimeProfile):
-    stim: StimlogPyVStim
-
-    def __repr__(self):
-        ret = {
-            'n_trials': self.n_trials,
-            'foreach_trial_time': np.diff(self.get_time_interval(), axis=1),
-            'n_cycle:': self.stim.riglog_data.get_protocol().get_loops_expr().n_cycles
-        }
-        return repr(ret)
-
-    __str__ = __repr__
-
     @property
-    def unique_stimuli_set(self) -> pl.DataFrame:
-        df = pl.DataFrame({
-            'i_stims': self.stim.stim_index.astype(int),
-            'i_trials': self.stim.trial_index.astype(int)
+    def profile_dataframe(self) -> pl.DataFrame:
+        return pl.DataFrame({
+            'i_stims': self.stim_index.astype(int),
+            'i_trials': self.trial_index.astype(int)
         }).unique(maintain_order=True)
-        return df
 
     @property
-    def n_trials(self) -> int:
-        return self.unique_stimuli_set.shape[0]
-
-    @property
-    def i_stim(self) -> np.ndarray:
-        """(N, ) value: stim type index"""
-        return self.unique_stimuli_set.get_column('i_stims').to_numpy()
-
-    @property
-    def i_trial(self) -> np.ndarray:
-        """(N, ). value: trial"""
-        return self.unique_stimuli_set.get_column('i_trials').to_numpy()
-
-    def get_time_interval(self) -> np.ndarray:
-        ustims = self.stim.stim_index * (1 - self.stim.blank)
-        utrials = self.stim.trial_index * (1 - self.stim.blank)
-
-        ret = np.zeros([self.n_trials, 2])
-        for i, (st, tr) in enumerate(self.unique_stimuli_set.iter_rows()):
-            idx = np.where((ustims == st) & (utrials == tr))[0]
-            ret[i, :] = self.stim.v_duino_time[[idx[0], idx[-1]]]
-
-        return ret
+    def n_cycles(self) -> list[int]:
+        return self.riglog_data.get_protocol().get_loops_expr().n_cycles
 
 
 # ======== #

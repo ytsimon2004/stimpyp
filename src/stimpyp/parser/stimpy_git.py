@@ -76,9 +76,10 @@ class StimlogGit(StimlogBase):
 
     def __init__(self, riglog: RiglogData,
                  file_path: PathLike,
-                 diode_offset=True):
+                 reset_mapping: dict[int, list[str]] | None = None,
+                 diode_offset: bool = True):
 
-        super().__init__(riglog, file_path)
+        super().__init__(riglog, file_path, reset_mapping)
         self.diode_offset = diode_offset
         self._cache_time_offset: float | None = None
 
@@ -437,7 +438,8 @@ class StimlogGit(StimlogBase):
 
         return GratingPattern(t, ori, sf, tf, contrast, dur)
 
-    def get_time_profile(self):
+    @property
+    def profile_dataframe(self) -> pl.DataFrame:
         raise NotImplementedError('')
 
 
