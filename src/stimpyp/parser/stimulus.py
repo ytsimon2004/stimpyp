@@ -4,7 +4,7 @@ import abc
 from typing import NamedTuple, Iterable, TYPE_CHECKING, TypeVar, Any, Generic
 
 import numpy as np
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, Self
 
 if TYPE_CHECKING:
     from stimpyp.parser.baselog import R
@@ -159,6 +159,10 @@ class GratingPattern(AbstractStimulusPattern):
         self.sf = sf
         self.tf = tf
 
+    @classmethod
+    def of(cls, rig: 'R') -> Self:
+        return super().of(rig)
+
     @property
     def sf_set(self) -> np.ndarray:
         """unique sf_set"""
@@ -191,15 +195,15 @@ class GratingPattern(AbstractStimulusPattern):
 
     def dir_i(self) -> dict[Direction, int]:
         """deg:index dict"""
-        return {it: i for i, it in enumerate(sorted(np.unique(self.direction)))}
+        return {it.item(): i for i, it in enumerate(sorted(np.unique(self.direction)))}
 
     def sf_i(self) -> dict[SF, int]:
         """sf:index dict"""
-        return {it: i for i, it in enumerate(sorted(np.unique(self.sf)))}
+        return {it.item(): i for i, it in enumerate(sorted(np.unique(self.sf)))}
 
     def tf_i(self) -> dict[TF, int]:
         """sf:index dict"""
-        return {it: i for i, it in enumerate(sorted(np.unique(self.tf)))}
+        return {it.item(): i for i, it in enumerate(sorted(np.unique(self.tf)))}
 
     # previous plot use tfsf as condition idx
     def sftf_i(self) -> dict[SFTF, int]:
@@ -207,7 +211,7 @@ class GratingPattern(AbstractStimulusPattern):
         return {
             it: i
             for i, it in enumerate([
-                (sf, tf)
+                (sf.item(), tf.item())
                 for sf in sorted(np.unique(self.sf))
                 for tf in sorted(np.unique(self.tf))
             ])
@@ -218,7 +222,7 @@ class GratingPattern(AbstractStimulusPattern):
         return {
             it: i  # (sf , tf, ori): index
             for i, it in enumerate([
-                (sf, tf, ori * 30)
+                (sf.item(), tf.item(), ori * 30)
                 for sf in sorted(np.unique(self.sf))
                 for tf in sorted(np.unique(self.tf))
                 for ori in range(12)
@@ -249,9 +253,9 @@ class FunctionPattern(AbstractStimulusPattern):
     """"Function Stimulus Pattern"""
 
     pos_xy: np.ndarray
-    """object center position XY. Array[float, [N, 2]]"""
+    """object center position XY. `Array[float, [N, 2]]`"""
     size_xy: np.ndarray
-    """object size width and height. Array[float, [N, 2]]"""
+    """object size width and height. `Array[float, [N, 2]]`"""
 
     def __init__(self, time: np.ndarray,
                  contrast: np.ndarray,

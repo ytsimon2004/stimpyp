@@ -606,6 +606,8 @@ class Stimlog(StimlogBase):
             return float(tstart + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tstart + self.time_offset[0])
+        else:
+            raise TypeError('')
 
     @property
     def exp_end_time(self) -> float:
@@ -615,6 +617,8 @@ class Stimlog(StimlogBase):
             return float(tend + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tend + self.time_offset[-1])
+        else:
+            raise TypeError('')
 
     @property
     def stim_start_time(self) -> float:
@@ -625,6 +629,8 @@ class Stimlog(StimlogBase):
             return float(tstart + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tstart + self.time_offset[0])
+        else:
+            raise TypeError('')
 
     @property
     def stim_end_time(self) -> float:
@@ -635,6 +641,8 @@ class Stimlog(StimlogBase):
             return float(tend + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tend + self.time_offset[-1])
+        else:
+            raise TypeError('')
 
     @property
     def stimulus_segment(self) -> np.ndarray:
@@ -941,7 +949,7 @@ class StimpyProtocol(AbstractStimProtocol):
     @property
     def trial_duration(self) -> int:
         dur = self['dur']
-        return np.sum(dur) + len(dur) * self.blank_duration + self.trial_blank_duration
+        return int(np.sum(dur) + len(dur) * self.blank_duration + self.trial_blank_duration)
 
     @property
     def visual_duration(self) -> int:

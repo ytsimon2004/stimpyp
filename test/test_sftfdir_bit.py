@@ -5,189 +5,91 @@ from typing import ClassVar
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from stimpyp.parser import StimpyProtocol, RiglogData
-from stimpyp.parser.stimpy_core import Stimlog
+from stimpyp.dataset.treadmill import load_riglog
+from stimpyp.parser import RiglogData
+from stimpyp.parser.stimpy_core import Stimlog, StimpyProtocol
 
 
 class TestProtocolParser(unittest.TestCase):
-    pass
-
-
-class TestProtocolParserReal(unittest.TestCase):
-    PROT: ClassVar[str] = """
-        # general parameters
-        controller = VisualExpController
-        stimulusType = gratings
-        nTrials = 5
-        shuffle = True
-        startBlankDuration = 900
-        blankDuration = 2
-        endBlankDuration = 900
-        texture = sqr
-        mask = None
-        
-        # stimulus conditions
-        n     dur  xc   yc   c    sf      ori    flick  width height evolveParams
-        1     3    0    0    1    0.04    0      0      200    200    {'phase':['linear',1]}
-        2     3    0    0    1    0.04    30     0      200    200    {'phase':['linear',1]}
-        3     3    0    0    1    0.04    60     0      200    200    {'phase':['linear',1]}
-        4     3    0    0    1    0.04    90     0      200    200    {'phase':['linear',1]}
-        5     3    0    0    1    0.04    120    0      200    200    {'phase':['linear',1]}
-        6     3    0    0    1    0.04    150    0      200    200    {'phase':['linear',1]}
-        7     3    0    0    1    0.04    180    0      200    200    {'phase':['linear',1]}
-        8     3    0    0    1    0.04    210    0      200    200    {'phase':['linear',1]}
-        9     3    0    0    1    0.04    240    0      200    200    {'phase':['linear',1]}
-        10    3    0    0    1    0.04    270    0      200    200    {'phase':['linear',1]}
-        11    3    0    0    1    0.04    300    0      200    200    {'phase':['linear',1]}
-        12    3    0    0    1    0.04    330    0      200    200    {'phase':['linear',1]}
-        
-        13    3    0    0    1    0.08    0      0      200    200    {'phase':['linear',1]}
-        14    3    0    0    1    0.08    30     0      200    200    {'phase':['linear',1]}
-        15    3    0    0    1    0.08    60     0      200    200    {'phase':['linear',1]}
-        16    3    0    0    1    0.08    90     0      200    200    {'phase':['linear',1]}
-        17    3    0    0    1    0.08    120    0      200    200    {'phase':['linear',1]}
-        18    3    0    0    1    0.08    150    0      200    200    {'phase':['linear',1]}
-        19    3    0    0    1    0.08    180    0      200    200    {'phase':['linear',1]}
-        20    3    0    0    1    0.08    210    0      200    200    {'phase':['linear',1]}
-        21    3    0    0    1    0.08    240    0      200    200    {'phase':['linear',1]}
-        22    3    0    0    1    0.08    270    0      200    200    {'phase':['linear',1]}
-        23    3    0    0    1    0.08    300    0      200    200    {'phase':['linear',1]}
-        24    3    0    0    1    0.08    330    0      200    200    {'phase':['linear',1]}
-        
-        25    3    0    0    1    0.16    0      0      200    200    {'phase':['linear',1]}
-        26    3    0    0    1    0.16    30     0      200    200    {'phase':['linear',1]}
-        27    3    0    0    1    0.16    60     0      200    200    {'phase':['linear',1]}
-        28    3    0    0    1    0.16    90     0      200    200    {'phase':['linear',1]}
-        29    3    0    0    1    0.16    120    0      200    200    {'phase':['linear',1]}
-        30    3    0    0    1    0.16    150    0      200    200    {'phase':['linear',1]}
-        31    3    0    0    1    0.16    180    0      200    200    {'phase':['linear',1]}
-        32    3    0    0    1    0.16    210    0      200    200    {'phase':['linear',1]}
-        33    3    0    0    1    0.16    240    0      200    200    {'phase':['linear',1]}
-        34    3    0    0    1    0.16    270    0      200    200    {'phase':['linear',1]}
-        35    3    0    0    1    0.16    300    0      200    200    {'phase':['linear',1]}
-        36    3    0    0    1    0.16    330    0      200    200    {'phase':['linear',1]}
-        
-        
-        
-        37    3    0    0    1    0.04    0      0      200    200    {'phase':['linear',4]}
-        38    3    0    0    1    0.04    30     0      200    200    {'phase':['linear',4]}
-        39    3    0    0    1    0.04    60     0      200    200    {'phase':['linear',4]}
-        40    3    0    0    1    0.04    90     0      200    200    {'phase':['linear',4]}
-        41    3    0    0    1    0.04    120    0      200    200    {'phase':['linear',4]}
-        42    3    0    0    1    0.04    150    0      200    200    {'phase':['linear',4]}
-        43    3    0    0    1    0.04    180    0      200    200    {'phase':['linear',4]}
-        44    3    0    0    1    0.04    210    0      200    200    {'phase':['linear',4]}
-        45    3    0    0    1    0.04    240    0      200    200    {'phase':['linear',4]}
-        46    3    0    0    1    0.04    270    0      200    200    {'phase':['linear',4]}
-        47    3    0    0    1    0.04    300    0      200    200    {'phase':['linear',4]}
-        48    3    0    0    1    0.04    330    0      200    200    {'phase':['linear',4]}
-        
-        49    3    0    0    1    0.08    0      0      200    200    {'phase':['linear',4]}
-        50    3    0    0    1    0.08    30     0      200    200    {'phase':['linear',4]}
-        51    3    0    0    1    0.08    60     0      200    200    {'phase':['linear',4]}
-        52    3    0    0    1    0.08    90     0      200    200    {'phase':['linear',4]}
-        53    3    0    0    1    0.08    120    0      200    200    {'phase':['linear',4]}
-        54    3    0    0    1    0.08    150    0      200    200    {'phase':['linear',4]}
-        55    3    0    0    1    0.08    180    0      200    200    {'phase':['linear',4]}
-        56    3    0    0    1    0.08    210    0      200    200    {'phase':['linear',4]}
-        57    3    0    0    1    0.08    240    0      200    200    {'phase':['linear',4]}
-        58    3    0    0    1    0.08    270    0      200    200    {'phase':['linear',4]}
-        59    3    0    0    1    0.08    300    0      200    200    {'phase':['linear',4]}
-        60    3    0    0    1    0.08    330    0      200    200    {'phase':['linear',4]}
-        
-        61    3    0    0    1    0.16    0      0      200    200    {'phase':['linear',4]}
-        62    3    0    0    1    0.16    30     0      200    200    {'phase':['linear',4]}
-        63    3    0    0    1    0.16    60     0      200    200    {'phase':['linear',4]}
-        64    3    0    0    1    0.16    90     0      200    200    {'phase':['linear',4]}
-        65    3    0    0    1    0.16    120    0      200    200    {'phase':['linear',4]}
-        66    3    0    0    1    0.16    150    0      200    200    {'phase':['linear',4]}
-        67    3    0    0    1    0.16    180    0      200    200    {'phase':['linear',4]}
-        68    3    0    0    1    0.16    210    0      200    200    {'phase':['linear',4]}
-        69    3    0    0    1    0.16    240    0      200    200    {'phase':['linear',4]}
-        70    3    0    0    1    0.16    270    0      200    200    {'phase':['linear',4]}
-        71    3    0    0    1    0.16    300    0      200    200    {'phase':['linear',4]}
-        72    3    0    0    1    0.16    330    0      200    200    {'phase':['linear',4]}
-        """
-
-    PROTOCOL: StimpyProtocol
+    prot: StimpyProtocol
 
     @classmethod
     def setUpClass(cls):
-        cls.PROTOCOL = StimpyProtocol.loads(cls.PROT)
+        cls.prot = load_riglog('stimpy-bit', 'sftfdir').get_protocol()
 
     def test_controller_name(self):
-        self.assertEqual(self.PROTOCOL.controller, 'VisualExpController')
+        self.assertEqual(self.prot.controller, 'VisualExpController')
 
     def test_stimulus_type(self):
-        self.assertEqual(self.PROTOCOL.stimulus_type, 'gratings')
+        self.assertEqual(self.prot.stimulus_type, 'gratings')
 
     def test_n_trials(self):
-        self.assertEqual(self.PROTOCOL.n_trials, 5)
+        self.assertEqual(self.prot.n_trials, 5)
 
     def test_n_stimuli(self):
-        self.assertEqual(self.PROTOCOL.n_stimuli, 72)
+        self.assertEqual(self.prot.n_stimuli, 72)
 
     def test_is_shuffle(self):
-        self.assertEqual(self.PROTOCOL.is_shuffle, True)
+        self.assertEqual(self.prot.is_shuffle, True)
 
     def test_start_blank_duration(self):
-        self.assertEqual(self.PROTOCOL.start_blank_duration, 900)
+        self.assertEqual(self.prot.start_blank_duration, 900)
 
     def test_blank_duration(self):
-        self.assertEqual(self.PROTOCOL.blank_duration, 2)
+        self.assertEqual(self.prot.blank_duration, 2)
 
     def test_end_blank_duration(self):
-        self.assertEqual(self.PROTOCOL.end_blank_duration, 900)
+        self.assertEqual(self.prot.end_blank_duration, 900)
 
     def test_texture(self):
-        self.assertEqual(self.PROTOCOL.texture, 'sqr')
+        self.assertEqual(self.prot.texture, 'sqr')
 
     def test_mask(self):
-        self.assertEqual(self.PROTOCOL.mask, 'None')
+        self.assertEqual(self.prot.mask, 'None')
 
     def test_stimulus_condition_n(self):
-        assert_array_equal(self.PROTOCOL['n'], np.arange(1, self.PROTOCOL.n_stimuli + 1))
+        assert_array_equal(self.prot['n'], np.arange(1, self.prot.n_stimuli + 1))
 
     def test_stimulus_condition_dur(self):
-        self.assertTrue(np.all(self.PROTOCOL['dur'] == 3))
+        self.assertTrue(np.all(self.prot['dur'] == 3))
 
     def test_stimulus_condition_xc(self):
-        self.assertTrue(np.all(self.PROTOCOL['xc'] == 0))
+        self.assertTrue(np.all(self.prot['xc'] == 0))
 
     def test_stimulus_condition_yc(self):
-        self.assertTrue(np.all(self.PROTOCOL['yc'] == 0))
+        self.assertTrue(np.all(self.prot['yc'] == 0))
 
     def test_stimulus_condition_c(self):
-        self.assertTrue(np.all(self.PROTOCOL['c'] == 1))
+        self.assertTrue(np.all(self.prot['c'] == 1))
 
     def test_stimulus_condition_ori(self):
         ori = np.tile(np.linspace(0, 330, 12), 6)  # sf * tf
-        assert_array_equal(self.PROTOCOL['ori'], ori)
+        assert_array_equal(self.prot['ori'], ori)
 
     def test_stimulus_condition_flick(self):
-        self.assertTrue(np.all(self.PROTOCOL['flick'] == 0))
+        self.assertTrue(np.all(self.prot['flick'] == 0))
 
     def test_stimulus_condition_width(self):
-        self.assertTrue(np.all(self.PROTOCOL['width'] == 200))
+        self.assertTrue(np.all(self.prot['width'] == 200))
 
     def test_stimulus_condition_height(self):
-        self.assertTrue(np.all(self.PROTOCOL['height'] == 200))
+        self.assertTrue(np.all(self.prot['height'] == 200))
 
     def test_stimulus_condition_sf(self):
         sf_val = [0.04, 0.08, 0.16]
         ret = ([sf_val[0]] * 12 + [sf_val[1]] * 12 + [sf_val[2]] * 12) * 2
-        assert_array_equal(self.PROTOCOL['sf'], ret)
+        assert_array_equal(self.prot['sf'], ret)
 
     def test_stimulus_condition_tf(self):
         tf_val = [1, 4]
         n_tf_set = len(tf_val)
-        block = int(self.PROTOCOL.n_stimuli / n_tf_set)
+        block = int(self.prot.n_stimuli / n_tf_set)
 
         ret = []
         for tf in tf_val:
             ret.extend([tf] * block)
 
-        assert_array_equal(self.PROTOCOL.tf, ret)
+        assert_array_equal(self.prot.tf, ret)
 
 
 class TestRiglogParser(unittest.TestCase):
@@ -1347,6 +1249,67 @@ class TestStimlogParser(unittest.TestCase):
 
     def test_state_trial_type(self):
         assert_array_equal(self.STIM.state_trial_type, np.array([0, 0, 0]))
+
+
+class TestStimulus(unittest.TestCase):
+    rig: RiglogData
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rig = load_riglog('stimpy-bit', 'sftfdir')
+
+    def test_grating_pattern(self):
+        from stimpyp.parser import GratingPattern
+        grating = GratingPattern.of(self.rig)
+
+        assert_array_equal(grating.sf_set, np.array([0.04, 0.08, 0.16]))
+        assert_array_equal(grating.tf_set, np.array([1, 4]))
+
+        self.assertEqual(grating.n_sf, 3)
+        self.assertEqual(grating.n_tf, 2)
+        self.assertEqual(grating.n_sftf, 6)
+        self.assertEqual(grating.n_dir, 12)
+
+        self.assertDictEqual(
+            grating.dir_i(),
+            {0: 0, 30: 1, 60: 2, 90: 3, 120: 4, 150: 5, 180: 6, 210: 7, 240: 8, 270: 9, 300: 10, 330: 11}
+        )
+
+        self.assertDictEqual(
+            grating.sf_i(),
+            {0.04: 0, 0.08: 1, 0.16: 2}
+        )
+
+        self.assertDictEqual(
+            grating.tf_i(),
+            {1: 0, 4: 1}
+        )
+
+        self.assertDictEqual(
+            grating.sftf_i(),
+            {(0.04, 1): 0, (0.04, 4): 1, (0.08, 1): 2, (0.08, 4): 3, (0.16, 1): 4, (0.16, 4): 5}
+        )
+
+        self.assertDictEqual(
+            grating.sftfdir_i(),
+            {
+                (0.04, 1, 0): 0, (0.04, 1, 30): 1, (0.04, 1, 60): 2, (0.04, 1, 90): 3, (0.04, 1, 120): 4,
+                (0.04, 1, 150): 5, (0.04, 1, 180): 6, (0.04, 1, 210): 7, (0.04, 1, 240): 8, (0.04, 1, 270): 9,
+                (0.04, 1, 300): 10, (0.04, 1, 330): 11, (0.04, 4, 0): 12, (0.04, 4, 30): 13, (0.04, 4, 60): 14,
+                (0.04, 4, 90): 15, (0.04, 4, 120): 16, (0.04, 4, 150): 17, (0.04, 4, 180): 18, (0.04, 4, 210): 19,
+                (0.04, 4, 240): 20, (0.04, 4, 270): 21, (0.04, 4, 300): 22, (0.04, 4, 330): 23, (0.08, 1, 0): 24,
+                (0.08, 1, 30): 25, (0.08, 1, 60): 26, (0.08, 1, 90): 27, (0.08, 1, 120): 28, (0.08, 1, 150): 29,
+                (0.08, 1, 180): 30, (0.08, 1, 210): 31, (0.08, 1, 240): 32, (0.08, 1, 270): 33, (0.08, 1, 300): 34,
+                (0.08, 1, 330): 35, (0.08, 4, 0): 36, (0.08, 4, 30): 37, (0.08, 4, 60): 38, (0.08, 4, 90): 39,
+                (0.08, 4, 120): 40, (0.08, 4, 150): 41, (0.08, 4, 180): 42, (0.08, 4, 210): 43, (0.08, 4, 240): 44,
+                (0.08, 4, 270): 45, (0.08, 4, 300): 46, (0.08, 4, 330): 47, (0.16, 1, 0): 48, (0.16, 1, 30): 49,
+                (0.16, 1, 60): 50, (0.16, 1, 90): 51, (0.16, 1, 120): 52, (0.16, 1, 150): 53, (0.16, 1, 180): 54,
+                (0.16, 1, 210): 55, (0.16, 1, 240): 56, (0.16, 1, 270): 57, (0.16, 1, 300): 58, (0.16, 1, 330): 59,
+                (0.16, 4, 0): 60, (0.16, 4, 30): 61, (0.16, 4, 60): 62, (0.16, 4, 90): 63, (0.16, 4, 120): 64,
+                (0.16, 4, 150): 65, (0.16, 4, 180): 66, (0.16, 4, 210): 67, (0.16, 4, 240): 68, (0.16, 4, 270): 69,
+                (0.16, 4, 300): 70, (0.16, 4, 330): 71
+            }
+        )
 
 
 if __name__ == '__main__':

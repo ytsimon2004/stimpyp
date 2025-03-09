@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from .baselog import StimlogBase
 
 import numpy as np
-from typing_extensions import TypeAlias
 
 __all__ = [
     'ProtocolAlias',
@@ -34,8 +33,8 @@ __all__ = [
     'SessionInfo'
 ]
 
-ProtocolAlias: TypeAlias = str
-Session: TypeAlias = str
+ProtocolAlias = str
+Session = str
 
 
 def get_protocol_name(filename: Path | 'StimlogBase') -> ProtocolAlias:
@@ -90,7 +89,6 @@ def _get_protocol_sessions_ldl(stim: 'StimlogBase') -> list[SessionInfo]:
     t2 = prot.total_duration - prot.end_blank_duration
     t3 = stim.riglog_data.exp_end_time
 
-    # print('test t', t0, t1, t2, t3)  # todo total time exceed around 4s?
     return [
         SessionInfo('light_bas', (t0, t1)),
         SessionInfo('dark', (t1, t2)),
