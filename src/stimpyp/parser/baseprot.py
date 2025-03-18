@@ -1,14 +1,13 @@
-from __future__ import annotations
-
 import abc
 from pathlib import Path
 from typing import Any, overload
 
 import numpy as np
 import polars as pl
-from polars import ColumnNotFoundError
-
 from neuralib.util.verbose import fprint, printdf
+from polars import ColumnNotFoundError
+from typing_extensions import Self
+
 from .baselog import STIMPY_SOURCE_VERSION
 
 __all__ = ['AbstractStimProtocol']
@@ -109,7 +108,7 @@ class AbstractStimProtocol(metaclass=abc.ABCMeta):
 
     @classmethod
     @abc.abstractmethod
-    def load(cls, file: Path | str) -> AbstractStimProtocol:
+    def load(cls, file: Path | str) -> Self:
         r"""
         Load \*.prot file
 
@@ -181,4 +180,3 @@ class AbstractStimProtocol(metaclass=abc.ABCMeta):
     def n_trials(self) -> int:
         """(T,)"""
         return self.options['nTrials']
-

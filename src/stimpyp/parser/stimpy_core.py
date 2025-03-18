@@ -1,17 +1,15 @@
-from __future__ import annotations
-
 import re
 from pathlib import Path
 from typing import Any, final, Iterable
 
 import numpy as np
 import polars as pl
-from typing_extensions import Self
-
 from neuralib.plot.figure import plot_figure
 from neuralib.typing import PathLike
 from neuralib.util.utils import cls_hasattr
 from neuralib.util.verbose import fprint
+from typing_extensions import Self
+
 from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo, get_protocol_sessions
@@ -93,7 +91,7 @@ class RiglogData(Baselog):
 
         return self.__stimlog_cache
 
-    def get_protocol(self) -> StimpyProtocol:
+    def get_protocol(self) -> 'StimpyProtocol':
         if self.__prot_cache is None:
             self.__prot_cache = StimpyProtocol.load(self.prot_file)
 

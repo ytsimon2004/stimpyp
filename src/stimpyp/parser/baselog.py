@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 import abc
 from pathlib import Path
 from typing import Literal, TypeVar, Generic, TypedDict, Any
 
 import numpy as np
 import polars as pl
-
 from neuralib.typing import PathLike
+
 from .event import RigEvent, CamEvent
 from .preference import PreferenceDict, load_preferences
 from .session import Session, SessionInfo
