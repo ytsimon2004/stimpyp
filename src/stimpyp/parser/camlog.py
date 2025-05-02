@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import abc
 import re
 from pathlib import Path
@@ -7,11 +5,11 @@ from typing import Any, get_args, Final, Literal, final
 
 import numpy as np
 import polars as pl
+from neuralib.util.utils import uglob
+from neuralib.util.verbose import fprint
 from scipy.interpolate import interp1d
 from typing_extensions import Self
 
-from neuralib.util.utils import uglob
-from neuralib.util.verbose import fprint
 from .baselog import CAMERA_TYPE, Baselog
 from .stimpy_core import RiglogData
 from .stimpy_pyv import PyVlog

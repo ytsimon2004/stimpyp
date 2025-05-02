@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 import abc
 from pathlib import Path
-from typing import Literal, TypeVar, Generic, cast, TypedDict, Any
+from typing import Literal, TypeVar, Generic, TypedDict, Any
 
 import numpy as np
 import polars as pl
-
 from neuralib.typing import PathLike
+
 from .event import RigEvent, CamEvent
 from .preference import PreferenceDict, load_preferences
 from .session import Session, SessionInfo
@@ -450,12 +448,12 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     @property
     def stim_start_time(self) -> float:
         """the first stimulation start time (in sec, synced to riglog time with diode offset)"""
-        return cast(float, self.stimulus_segment[0, 0])
+        return float(self.stimulus_segment[0, 0])
 
     @property
     def stim_end_time(self) -> float:
         """the last stimulation end time (in sec, synced to riglog time with diode offset)"""
-        return cast(float, self.stimulus_segment[-1, 1])
+        return float(self.stimulus_segment[-1, 1])
 
     @property
     @abc.abstractmethod

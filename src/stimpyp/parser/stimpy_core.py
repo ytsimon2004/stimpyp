@@ -1,17 +1,15 @@
-from __future__ import annotations
-
 import re
 from pathlib import Path
 from typing import Any, final, Iterable
 
 import numpy as np
 import polars as pl
-from typing_extensions import Self
-
 from neuralib.plot.figure import plot_figure
 from neuralib.typing import PathLike
 from neuralib.util.utils import cls_hasattr
 from neuralib.util.verbose import fprint
+from typing_extensions import Self
+
 from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo, get_protocol_sessions
@@ -93,7 +91,7 @@ class RiglogData(Baselog):
 
         return self.__stimlog_cache
 
-    def get_protocol(self) -> StimpyProtocol:
+    def get_protocol(self) -> 'StimpyProtocol':
         if self.__prot_cache is None:
             self.__prot_cache = StimpyProtocol.load(self.prot_file)
 
@@ -606,6 +604,8 @@ class Stimlog(StimlogBase):
             return float(tstart + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tstart + self.time_offset[0])
+        else:
+            raise TypeError('')
 
     @property
     def exp_end_time(self) -> float:
@@ -615,6 +615,8 @@ class Stimlog(StimlogBase):
             return float(tend + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tend + self.time_offset[-1])
+        else:
+            raise TypeError('')
 
     @property
     def stim_start_time(self) -> float:
@@ -625,6 +627,8 @@ class Stimlog(StimlogBase):
             return float(tstart + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tstart + self.time_offset[0])
+        else:
+            raise TypeError('')
 
     @property
     def stim_end_time(self) -> float:
@@ -635,6 +639,8 @@ class Stimlog(StimlogBase):
             return float(tend + self.time_offset)
         elif isinstance(self.time_offset, np.ndarray):
             return float(tend + self.time_offset[-1])
+        else:
+            raise TypeError('')
 
     @property
     def stimulus_segment(self) -> np.ndarray:
@@ -941,7 +947,7 @@ class StimpyProtocol(AbstractStimProtocol):
     @property
     def trial_duration(self) -> int:
         dur = self['dur']
-        return np.sum(dur) + len(dur) * self.blank_duration + self.trial_blank_duration
+        return int(np.sum(dur) + len(dur) * self.blank_duration + self.trial_blank_duration)
 
     @property
     def visual_duration(self) -> int:

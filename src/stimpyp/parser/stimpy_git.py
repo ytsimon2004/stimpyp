@@ -1,15 +1,13 @@
-from __future__ import annotations
-
 import re
 from pathlib import Path
 from typing import Any, Callable, final
 
 import numpy as np
 import polars as pl
-
 from neuralib.typing import PathLike
 from neuralib.util.deprecation import deprecated_func
 from neuralib.util.verbose import fprint
+
 from .baselog import StimlogBase
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimpy_core import RiglogData, StimpyProtocol

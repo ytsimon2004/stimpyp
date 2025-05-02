@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 import io
 import re
 from typing import Any
 
 import polars as pl
-
 from stimpyp.parser.math_eval import evaluate_string
 
 __all__ = [

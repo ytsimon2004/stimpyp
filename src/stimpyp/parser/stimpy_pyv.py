@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import dataclasses
 import re
 from pathlib import Path
@@ -7,9 +5,9 @@ from typing import final, Any, Final
 
 import numpy as np
 import polars as pl
+from neuralib.util.verbose import fprint
 from scipy.interpolate import interp1d
 
-from neuralib.util.verbose import fprint
 from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo
@@ -126,7 +124,7 @@ class PyVlog(Baselog):
     def get_stimlog(self) -> 'StimlogPyVStim':
         return StimlogPyVStim(self)
 
-    def get_protocol(self) -> PyVProtocol:
+    def get_protocol(self) -> 'PyVProtocol':
         if self.__prot_cache is None:
             self.__prot_cache = PyVProtocol.load(self.prot_file)
 
@@ -410,7 +408,7 @@ class PyVProtocol(AbstractStimProtocol):
     def total_duration(self) -> int:
         raise NotImplementedError('')
 
-    def get_loops_expr(self) -> ProtExpression:
+    def get_loops_expr(self) -> 'ProtExpression':
         """parse and get the expression and loop number"""
         exprs = []
         n_cycles = []

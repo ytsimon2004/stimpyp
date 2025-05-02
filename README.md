@@ -4,7 +4,7 @@ utilities parser for the Stimpy module
 ## Installation
 
 ```bash
-conda create -n stimpyp python=3.9 -y
+conda create -n stimpyp python=3.10 -y
 conda activate stimpyp
 pip install stimpyp
 ```
