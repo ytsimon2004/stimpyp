@@ -19,7 +19,14 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-dynamic = ['dependencies']
+dependencies = ['neura-library', 'pyparsing']
+
+[project.optional-dependencies]
+
+doc = [
+    'sphinx', 'pydata-sphinx-theme', 'sphinx_prompt', 'sphinx_copybutton', 'sphinx-toolbox',
+    'nbsphinx', 'jupyterlab'
+]
 
 [project.urls]
 Homepage = "https://github.com/ytsimon2004/stimpyp"
