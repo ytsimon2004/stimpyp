@@ -1,6 +1,6 @@
 import unittest
 
-from stimpyp.dataset.treadmill import load_riglog
+from stimpyp.dataset.treadmill import load_example_data
 from stimpyp.parser import PyVlog
 
 
@@ -9,7 +9,7 @@ class TestLogParser(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.log = load_riglog('pyvstim', 'circular')
+        cls.log = load_example_data('pyvstim', 'circular')
 
     def test_source_version(self):
         self.assertEqual(self.log.version, 'pyvstim')

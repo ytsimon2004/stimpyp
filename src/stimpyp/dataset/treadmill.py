@@ -4,12 +4,12 @@ from neuralib.io.dataset import google_drive_folder
 from neuralib.util.utils import joinn
 from stimpyp.parser import STIMPY_SOURCE_VERSION, RiglogData, PyVlog
 
-__all__ = ['load_riglog']
+__all__ = ['load_example_data']
 
 
-def load_riglog(source_version: STIMPY_SOURCE_VERSION,
-                stim_type: Literal['sftfdir', 'circular'] | None = None,
-                cached: bool = True) -> RiglogData | PyVlog:
+def load_example_data(source_version: STIMPY_SOURCE_VERSION,
+                      stim_type: Literal['sftfdir', 'circular'] | None = None,
+                      cached: bool = True) -> RiglogData | PyVlog:
     """
     Load log data for treadmill task with optional visual stimulation
 
@@ -35,5 +35,5 @@ def load_riglog(source_version: STIMPY_SOURCE_VERSION,
 
     name += '_' + joinn('_', source_version, stim_type)
 
-    with google_drive_folder(folder, cached=cached, rename_folder=name, quiet=False) as src:
+    with google_drive_folder(folder, cached=cached, rename_folder=name) as src:
         return cls(root_path=src)

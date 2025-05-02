@@ -11,7 +11,7 @@
 *.nrrd
 Analysis
 Data
-doc/source/notebooks/test_file
+docs/source/notebooks/test_file
 
 # pycharm
 .idea/*

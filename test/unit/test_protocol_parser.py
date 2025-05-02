@@ -140,9 +140,7 @@ n      dur     xc   yc   c    sf    tf   ori      width  height pattern
 """
 
         df = eval_dataframe(dataframe_string)
-        print(df)
         df = generate_extended_dataframe(df)
-        print(df)
 
         n_rows = df.shape[0]
         expected_result = pl.DataFrame(
@@ -162,3 +160,7 @@ n      dur     xc   yc   c    sf    tf   ori      width  height pattern
         )
 
         assert_frame_equal(df, expected_result)
+
+
+if __name__ == '__main__':
+    unittest.main()

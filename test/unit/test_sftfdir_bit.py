@@ -5,7 +5,7 @@ from typing import ClassVar
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from stimpyp.dataset.treadmill import load_riglog
+from stimpyp.dataset.treadmill import load_example_data
 from stimpyp.parser import RiglogData
 from stimpyp.parser.stimpy_core import Stimlog, StimpyProtocol
 
@@ -15,7 +15,7 @@ class TestProtocolParser(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.prot = load_riglog('stimpy-bit', 'sftfdir').get_protocol()
+        cls.prot = load_example_data('stimpy-bit', 'sftfdir').get_protocol()
 
     def test_controller_name(self):
         self.assertEqual(self.prot.controller, 'VisualExpController')
@@ -1256,7 +1256,7 @@ class TestStimulus(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.rig = load_riglog('stimpy-bit', 'sftfdir')
+        cls.rig = load_example_data('stimpy-bit', 'sftfdir')
 
     def test_grating_pattern(self):
         from stimpyp.parser import GratingPattern

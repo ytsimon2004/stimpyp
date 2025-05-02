@@ -4,10 +4,10 @@ from typing import Any, overload
 
 import numpy as np
 import polars as pl
-from neuralib.util.verbose import fprint, printdf
-from polars import ColumnNotFoundError
+from polars.exceptions import ColumnNotFoundError
 from typing_extensions import Self
 
+from neuralib.util.verbose import fprint, printdf
 from .baselog import STIMPY_SOURCE_VERSION
 
 __all__ = ['AbstractStimProtocol']

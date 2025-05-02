@@ -1,6 +1,6 @@
 import unittest
 
-from stimpyp.dataset.treadmill import load_riglog
+from stimpyp.dataset.treadmill import load_example_data
 from stimpyp.parser import StimlogBase, SessionInfo
 
 
@@ -9,7 +9,7 @@ class TestStimlog(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.stimlog = load_riglog('stimpy-bit').get_stimlog()
+        cls.stimlog = load_example_data('stimpy-bit').get_stimlog()
 
     def test_session_trials(self):
         exp = {
