@@ -1,11 +1,11 @@
 import abc
 from pathlib import Path
-from typing import Literal, TypeVar, Generic, TypedDict, Any
+from typing import Literal, TypeVar, Generic, TypedDict
 
 import numpy as np
 import polars as pl
-from neuralib.typing import PathLike
 
+from neuralib.typing import PathLike
 from .event import RigEvent, CamEvent
 from .preference import PreferenceDict, load_preferences
 from .session import Session, SessionInfo
@@ -16,6 +16,7 @@ __all__ = [
     'LOG_SUFFIX',
     'CAMERA_TYPE',
     #
+    'RigConfig',
     'Baselog',
     'StimlogBase',
 ]
@@ -51,6 +52,7 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
     """ABC class for different stimpy/pyvstim log files. i.e., .log, .riglog"""
 
     log_config: RigConfig
+    """config dict for the log file"""
 
     def __init__(self,
                  root_path: PathLike,
@@ -61,6 +63,7 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
         :param root_path: log file path or log directory
         :param log_suffix: log file suffix
         :param diode_offset: whether do the diode offset
+        :param reset_mapping: Customized mapping
         """
 
         if not isinstance(root_path, Path):
@@ -273,6 +276,7 @@ class Baselog(Generic[S, P], metaclass=abc.ABCMeta):
         pass
 
     def get_stimulus_type(self) -> str:
+        """get stimulus type name based on protocol"""
         return self.get_protocol().stimulus_type
 
     @property
@@ -315,15 +319,14 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     # =========== #
     # Log Headers #
     # =========== #
+    config = {}
+    """config for non-header information"""
 
-    config: dict[str, Any] = {}
-    """i.e., name, commit hash, missed_frames, ..."""
+    log_info = {}
+    """code:log name dictionary"""
 
-    log_info: dict[int, str] = {}
-    """i.e., {10: 'vstim', 20: 'stateMachine'}"""
-
-    log_header: dict[int, list[str]] = {}
-    """i.e., {10: ['code','presentTime','iStim', ...], 20: ['code', 'elapsed', 'cycle', ...]}"""
+    log_header = {}
+    """code:log header dictionary"""
 
     # =========== #
     # Common Attr #
@@ -392,8 +395,7 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
     pattern: np.ndarray
     """object pattern. Array[str, P]"""
 
-    def __init__(self,
-                 riglog: R,
+    def __init__(self, riglog: R,
                  file_path: PathLike | None,
                  reset_mapping: dict[int, list[str]] | None = None):
         """
@@ -423,10 +425,20 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_visual_stim_dataframe(self, **kwargs) -> pl.DataFrame:
+        """Visual presentation dataframe"""
         pass
 
     @abc.abstractmethod
     def get_state_machine_dataframe(self) -> pl.DataFrame:
+        """State Machine dataframe"""
+        pass
+
+    def get_photo_indicator_dataframe(self) -> pl.DataFrame:
+        """Photo Indicator dataframe. Github version only"""
+        pass
+
+    def get_log_dict_dataframe(self) -> pl.DataFrame:
+        """Log dict dataframe. Github version only"""
         pass
 
     # ========= #
@@ -487,7 +499,7 @@ class StimlogBase(Generic[R], metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def time_offset(self) -> float:
+    def time_offset(self) -> float | np.ndarray:
         """time (in sec) to sync stimlog time to riglog"""
         pass
 

@@ -4,10 +4,10 @@ from typing import Any, Callable, final
 
 import numpy as np
 import polars as pl
+
 from neuralib.typing import PathLike
 from neuralib.util.deprecation import deprecated_func
 from neuralib.util.verbose import fprint
-
 from .baselog import StimlogBase
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimpy_core import RiglogData, StimpyProtocol
@@ -434,11 +434,16 @@ class StimlogGit(StimlogBase):
         contrast = np.array([prot['c'][n] for n in log_nr])
         dur = np.array([prot['dur'][n] for n in log_nr])
 
-        return GratingPattern(t, ori, sf, tf, contrast, dur)
+        return GratingPattern(t, ori, sf, tf, contrast, duration=dur)
 
     @property
     def profile_dataframe(self) -> pl.DataFrame:
-        raise NotImplementedError('')
+        return (
+            self.get_log_dict_dataframe()
+            .with_columns(pl.col('condition_nr').alias('i_stims'))
+            .with_columns(pl.col('block_nr').alias('i_trials'))
+            .select('i_stims', 'i_trials')
+        )
 
 
 # ========== #

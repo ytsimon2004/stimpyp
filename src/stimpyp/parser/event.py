@@ -12,7 +12,6 @@ __all__ = [
 @attrs.define
 class RigEvent:
     """container for riglog event type/value"""
-
     name: str
     """event name"""
     data: np.ndarray
@@ -24,19 +23,23 @@ class RigEvent:
 
     @property
     def time(self) -> np.ndarray:
+        """time of event"""
         return self.data[:, 0]
 
     @property
     def value(self) -> np.ndarray:
+        """value of event"""
         return self.data[:, 1]
 
     @property
     def start_time(self) -> float:
-        return cast(float, self.time[0])
+        """start time of event. i.e., the first time of event."""
+        return float(self.time[0])
 
     @property
     def end_time(self) -> float:
-        return cast(float, self.time[-1])
+        """end time of event. i.e., the last time of event."""
+        return float(self.time[-1])
 
     @property
     def value_index(self) -> np.ndarray:

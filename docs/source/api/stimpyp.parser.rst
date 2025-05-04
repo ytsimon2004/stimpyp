@@ -3,11 +3,11 @@ stimpyp.parser
 
 .. automodule:: stimpyp.parser
    :members:
-   
+
 .. toctree::
     :maxdepth: 1
     :caption: Modules:
-    
+
     stimpyp.parser.baselog
     stimpyp.parser.baseprot
     stimpyp.parser.camlog
@@ -21,4 +21,3 @@ stimpyp.parser
     stimpyp.parser.stimpy_pyv
     stimpyp.parser.stimulus
     stimpyp.parser.util
-

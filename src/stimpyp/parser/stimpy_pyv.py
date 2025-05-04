@@ -5,9 +5,9 @@ from typing import final, Any, Final
 
 import numpy as np
 import polars as pl
-from neuralib.util.verbose import fprint
 from scipy.interpolate import interp1d
 
+from neuralib.util.verbose import fprint
 from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo
@@ -317,8 +317,7 @@ class PyVProtocol(AbstractStimProtocol):
     """
 
     @classmethod
-    def load(cls,
-             file: Path | str, *,
+    def load(cls, file: Path | str, *,
              cast_numerical_opt=True) -> 'PyVProtocol':
 
         file = Path(file)

@@ -1,24 +1,46 @@
+from __future__ import annotations
+
 import re
 from pathlib import Path
 from typing import Any, final, Iterable
 
 import numpy as np
 import polars as pl
+from typing_extensions import Self
+
 from neuralib.plot.figure import plot_figure
 from neuralib.typing import PathLike
 from neuralib.util.utils import cls_hasattr
 from neuralib.util.verbose import fprint
-from typing_extensions import Self
-
 from .baselog import Baselog, StimlogBase
 from .baseprot import AbstractStimProtocol
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimulus import GratingPattern, AbstractStimulusPattern, FunctionPattern
 from .util import unfold_stimuli_condition, try_casting_number
 
-__all__ = ['RiglogData',
-           'Stimlog',
-           'StimpyProtocol']
+__all__ = [
+    'load_riglog',
+    'RiglogData',
+    #
+    'Stimlog',
+    #
+    'load_protocol',
+    'StimpyProtocol'
+]
+
+
+def load_riglog(root_path: PathLike,
+                diode_offset: bool = True,
+                reset_mapping: dict[int, list[str]] | None = None) -> RiglogData:
+    """
+    load riglog data
+
+    :param root_path: riglog file path or riglog directory path
+    :param diode_offset: do the diode offset to sync the time between riglog and stimlog
+    :param reset_mapping:
+    :return: :class:`RiglogData`
+    """
+    return RiglogData(root_path=root_path, diode_offset=diode_offset, reset_mapping=reset_mapping)
 
 
 @final
@@ -115,6 +137,15 @@ class Stimlog(StimlogBase):
 
         M = number of statemachine pulse
     """
+
+    config: dict[str, Any] = {}
+    """i.e., name, commit hash, missed_frames, ..."""
+
+    log_info: dict[int, str] = {}
+    """i.e., {10: 'vstim', 20: 'stateMachine'}"""
+
+    log_header: dict[int, list[str]] = {}
+    """i.e., {10: ['code','presentTime','iStim', ...], 20: ['code', 'elapsed', 'cycle', ...]}"""
 
     photo_state: np.ndarray
     """photo diode on-off. Array[int, P]. value domain in (0,1)"""
@@ -683,7 +714,7 @@ class Stimlog(StimlogBase):
         Get stimulus pattern container
 
         :param with_dur: if extract theoretical duration value from protocol file
-        :return: ``AbstractStimulusPattern`` based on stim type
+        :return: :class:`~stimpyp.parser.stimulus.AbstractStimulusPattern` based on stim type
         """
         prot = self.riglog_data.get_protocol()
         stim_type = self.riglog_data.get_stimulus_type()
@@ -838,6 +869,14 @@ def _plot_time_alignment_diode(riglog_screen: np.ndarray,
 # ======== #
 # Protocol #
 # ======== #
+
+def load_protocol(file: PathLike) -> StimpyProtocol:
+    """Load stimpy protocol file
+
+    :param file: protocol file path
+    """
+    return StimpyProtocol.load(file)
+
 
 class StimpyProtocol(AbstractStimProtocol):
     r"""

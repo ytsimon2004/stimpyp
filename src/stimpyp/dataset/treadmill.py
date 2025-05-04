@@ -2,12 +2,12 @@ from typing import Literal
 
 from neuralib.io.dataset import google_drive_folder
 from neuralib.util.utils import joinn
-from stimpyp.parser import STIMPY_SOURCE_VERSION, RiglogData, PyVlog
+from stimpyp.parser import STIMPY_SOURCE_VERSION, PyVlog, RiglogData
 
 __all__ = ['load_example_data']
 
 
-def load_example_data(source_version: STIMPY_SOURCE_VERSION,
+def load_example_data(source_version: STIMPY_SOURCE_VERSION, *,
                       stim_type: Literal['sftfdir', 'circular'] | None = None,
                       cached: bool = True) -> RiglogData | PyVlog:
     """
@@ -26,6 +26,9 @@ def load_example_data(source_version: STIMPY_SOURCE_VERSION,
             cls = RiglogData
         case ('stimpy-bit', 'sftfdir'):
             folder = "1Kjr-tgZd-11Lm5ZAswmOxXJ1h-hXszBr"
+            cls = RiglogData
+        case ('stimpy-git', 'sftfdir'):
+            folder = "1jHSGrFLpLaEfglkFniCq2WxjOJogkD3p"
             cls = RiglogData
         case ('pyvstim', 'circular'):
             folder = '1z8ajR_7Yx4enETEVPBiF_Y2u5prk2IbI'
