@@ -2,7 +2,7 @@
 
 **Stimpyp** is a Python utility for parsing output from the NERF `Stimpy` software.
 
-See the [Documentation](https://stimpyp.readthedocs.io/en/latest/index.html)
+## See the [Documentation](https://stimpyp.readthedocs.io/en/latest/index.html)
 
 ---
 
