@@ -109,7 +109,7 @@ init stimlog
 or :attr:`~stimpyp.parser.stimpy_git.StimlogGit` (github version parser)
 
 
-Common attributes
+common attributes
 ---------------------
 Common usage across different stimpy version
 
@@ -310,7 +310,7 @@ Get stim index and trial index dataframe
     └─────────┴──────────┘
 
 
-Version-specific attributes
+version-specific attributes
 ------------------------------
 Some attributes/method call are stimpy version specific
 

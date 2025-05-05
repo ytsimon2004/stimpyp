@@ -86,6 +86,7 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
     # noinspection PyTypeChecker
     @property
     def nframes(self) -> int:
+        """number of frames"""
         return self.frame_id[-1]
 
 
@@ -95,7 +96,7 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
 
 @final
 class LabCamlog(AbstractCamlog):
-
+    """Labcam log"""
     @classmethod
     def load(cls, root: Path | str,
              suffix: str = '.camlog') -> Self:
@@ -139,9 +140,9 @@ class LabCamlog(AbstractCamlog):
     def get_camera_time(self, log: AbstractLog,
                         cam_name: CAMERA_TYPE = '1P_cam',
                         interpolate: bool = True) -> np.ndarray:
-        """Interpolate cameralog frames to those recorded by pyvstim.
+        """Interpolate camera log frames to those recorded by pyvstim.
 
-        :param log: :class:`~stimpyp.parser.baselog.Baselog`
+        :param log: :class:`~stimpyp.parser.base.AbstractLog`
         :param cam_name: camera name
         :param interpolate: Whether do the interpolation according to the number of log event
         :return: 1D camera time array in sec

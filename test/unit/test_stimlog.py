@@ -2,7 +2,7 @@ from stimpyp.dataset.treadmill import load_example_data
 
 
 def stimlog():
-    return load_example_data('stimpy-git', stim_type='sftfdir').get_stimlog()
+    return load_example_data('stimpy-bit', stim_type='sftfdir').get_stimlog()
 
 
 def test_config():
@@ -12,7 +12,3 @@ def test_config():
     assert stim.log_header == {
         10: ['code', 'presentTime', 'iStim', 'iTrial', 'photo', 'contrast', 'ori', 'sf', 'phase', 'stim_idx'],
         20: ['code', 'elapsed', 'cycle', 'newState', 'oldState', 'stateElapsed', 'trialType']}
-
-
-df = stimlog().profile_dataframe
-print(df)
