@@ -22,7 +22,7 @@ See the [Documentation](https://stimpyp.readthedocs.io/en/latest/index.html)
 
 ---
 
-## 📦 Installation
+## Installation
 
 > Requires **Python ≥ 3.10**
 

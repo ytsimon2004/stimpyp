@@ -1,6 +1,6 @@
 [project]
 name = "stimpyp"
-version = "0.0.8"
+version = "0.1.0"
 requires-python = ">=3.10"
 description = "utilities parser for the Stimpy module"
 authors = [
@@ -34,13 +34,6 @@ Documentation = "https://neuralib.readthedocs.io/en/latest/index.html"
 Repository = "https://github.com/ytsimon2004/stimpyp"
 Issues = "https://github.com/ytsimon2004/stimpyp/issues"
 
-
-[tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
-
-[tool.setuptools.dynamic.optional-dependencies]
-doc = { file = ["requirements-document.txt"] }
-notebook = { file = ["requirements-notebook.txt"] }
 
 [build-system]
 build-backend = "setuptools.build_meta"
