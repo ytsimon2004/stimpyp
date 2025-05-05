@@ -1,11 +1,9 @@
-import abc
-from typing import NamedTuple, Iterable, TYPE_CHECKING, TypeVar, Any, Generic
+from typing import NamedTuple, Iterable
 
 import numpy as np
 from typing_extensions import TypeAlias, Self
 
-if TYPE_CHECKING:
-    from stimpyp.parser.baselog import R
+from .base import AbstractStimulusPattern
 
 __all__ = [
     'Direction',
@@ -17,7 +15,6 @@ __all__ = [
     'GratingStim',
     'FunctionStim',
     #
-    'AbstractStimulusPattern',
     'GratingPattern',
     'FunctionPattern'
 ]
@@ -65,60 +62,6 @@ class FunctionStim(NamedTuple):
     """object center position XY. Array[float, 2]"""
     size_xy: np.ndarray
     """object size width and height. Array[float, 2]"""
-
-
-# ================ #
-# Stimulus Pattern #
-# ================ #
-
-S = TypeVar('S')  # Individual Stim
-P = TypeVar('P')  # pattern
-
-
-class AbstractStimulusPattern(Generic[P, S], metaclass=abc.ABCMeta):
-    """
-    Abstract Stimulus Pattern
-
-    `Dimension parameters`:
-
-        N = numbers of visual stimulation (on-off pairs) = (T * S)
-    """
-
-    time: np.ndarray
-    """stim on-off in sec. Array[float, [N, 2]]"""
-    contrast: np.ndarray
-    """stimulus contrast. Array[float, N]"""
-    duration: np.ndarray
-    """theoretical duration in prot file, not actual detected using diode. Array[float, N]"""
-
-    def __init__(self,
-                 time: np.ndarray,
-                 contrast: np.ndarray,
-                 *,
-                 duration: np.ndarray | None = None):
-        """
-
-        :param time: stim on-off in sec. Array[float, [N, 2]]
-        :param contrast: stimulus contrast. Array[float, N]
-        :param duration: theoretical duration in prot file, not actual detected using diode. Array[float, N]
-        """
-        self.time = time
-        self.contrast = contrast
-        self.duration = duration
-
-    @classmethod
-    def of(cls, rig: 'R') -> P:
-        """
-        init from Baselog children class
-
-        :param rig: :class:`~stimpyp.parser.baselog.Baselog`
-        :return: :class:`StimPattern`
-        """
-        return rig.get_stimlog().get_stim_pattern()
-
-    @abc.abstractmethod
-    def foreach_stimulus(self, name: bool = False) -> Iterable[Any | S]:
-        pass
 
 
 class GratingPattern(AbstractStimulusPattern):

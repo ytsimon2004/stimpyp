@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import NamedTuple, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .baselog import StimlogBase
+    from .base import AbstractStimlog
 
 import numpy as np
 
@@ -37,9 +37,9 @@ ProtocolAlias = str
 Session = str
 
 
-def get_protocol_name(filename: Path | 'StimlogBase') -> ProtocolAlias:
-    from .baselog import StimlogBase
-    if isinstance(filename, StimlogBase):
+def get_protocol_name(filename: Path | 'AbstractStimlog') -> ProtocolAlias:
+    from .base import AbstractStimlog
+    if isinstance(filename, AbstractStimlog):
         filename = filename.stimlog_file
 
     filename = filename.stem
@@ -53,7 +53,7 @@ def get_protocol_name(filename: Path | 'StimlogBase') -> ProtocolAlias:
         raise RuntimeError(f'unknown fname >> {filename}')
 
 
-def get_protocol_sessions(stim: 'StimlogBase') -> list[SessionInfo]:
+def get_protocol_sessions(stim: 'AbstractStimlog') -> list[SessionInfo]:
     protocol = get_protocol_name(stim)
     if protocol == 'visual_open_loop':
         return _get_protocol_sessions_vol(stim)
@@ -65,7 +65,7 @@ def get_protocol_sessions(stim: 'StimlogBase') -> list[SessionInfo]:
         raise RuntimeError(f'unknown protocol >> {protocol}')
 
 
-def _get_protocol_sessions_vol(stim: 'StimlogBase') -> list[SessionInfo]:
+def _get_protocol_sessions_vol(stim: 'AbstractStimlog') -> list[SessionInfo]:
     """get session info for visual open loop protocol"""
     t0 = stim.riglog_data.exp_start_time
     t1 = stim.stim_start_time  # diode synced
@@ -79,7 +79,7 @@ def _get_protocol_sessions_vol(stim: 'StimlogBase') -> list[SessionInfo]:
     ]
 
 
-def _get_protocol_sessions_ldl(stim: 'StimlogBase') -> list[SessionInfo]:
+def _get_protocol_sessions_ldl(stim: 'AbstractStimlog') -> list[SessionInfo]:
     # diode signal is no longer reliable, use .prot file value instead
     from .stimpy_core import StimpyProtocol
     prot = StimpyProtocol.load(stim.stimlog_file.with_suffix('.prot'))
@@ -97,7 +97,7 @@ def _get_protocol_sessions_ldl(stim: 'StimlogBase') -> list[SessionInfo]:
     ]
 
 
-def _get_protocol_sessions_grey(stim: 'StimlogBase') -> list[SessionInfo]:
+def _get_protocol_sessions_grey(stim: 'AbstractStimlog') -> list[SessionInfo]:
     t0 = stim.riglog_data.exp_start_time
     t3 = stim.riglog_data.exp_end_time
     return [SessionInfo('all', (t0, t3))]

@@ -15,7 +15,7 @@ class TestProtocolParser(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.prot = load_example_data('stimpy-bit', 'sftfdir').get_protocol()
+        cls.prot = load_example_data('stimpy-bit', stim_type='sftfdir').get_protocol()
 
     def test_controller_name(self):
         self.assertEqual(self.prot.controller, 'VisualExpController')
@@ -1256,7 +1256,7 @@ class TestStimulus(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.rig = load_example_data('stimpy-bit', 'sftfdir')
+        cls.rig = load_example_data('stimpy-bit', stim_type='sftfdir')
 
     def test_grating_pattern(self):
         from stimpyp.parser import GratingPattern

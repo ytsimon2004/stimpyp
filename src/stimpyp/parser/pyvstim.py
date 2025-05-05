@@ -8,8 +8,7 @@ import polars as pl
 from scipy.interpolate import interp1d
 
 from neuralib.util.verbose import fprint
-from .baselog import Baselog, StimlogBase
-from .baseprot import AbstractStimProtocol
+from .base import AbstractLog, AbstractStimlog, AbstractStimProtocol
 from .session import Session, SessionInfo
 from .stimulus import GratingPattern
 from .util import try_casting_number, unfold_stimuli_condition
@@ -20,7 +19,7 @@ __all__ = ['PyVlog',
 
 
 @final
-class PyVlog(Baselog):
+class PyVlog(AbstractLog):
     """class for handle the log file (rig event specific) for pyvstim version (vb lab legacy)"""
 
     log_config: dict[str, Any] = {}
@@ -136,7 +135,7 @@ class PyVlog(Baselog):
 # ======= #
 
 @final
-class StimlogPyVStim(StimlogBase):
+class StimlogPyVStim(AbstractStimlog):
     """class for handle the log file (stim event specific) for pyvstim version (vb lab legacy)
 
     `Dimension parameters`:

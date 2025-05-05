@@ -8,17 +8,17 @@ import polars as pl
 from neuralib.typing import PathLike
 from neuralib.util.deprecation import deprecated_func
 from neuralib.util.verbose import fprint
-from .baselog import StimlogBase
+from .base import AbstractStimlog
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimpy_core import RiglogData, StimpyProtocol
 from .stimulus import GratingPattern
 
 __all__ = ['StimlogGit',
-           'load_stimlog']
+           'load_lazy_stimlog']
 
 
 @final
-class StimlogGit(StimlogBase):
+class StimlogGit(AbstractStimlog):
     """class for handle the stimlog file for stimpy **github** version
     (mainly tested in the commits derived from master branch)
 
@@ -491,7 +491,7 @@ def _time_offset(rig: RiglogData,
     return offset_t_avg, offset_t_std
 
 
-def load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int, pl.DataFrame]:
+def load_lazy_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int, pl.DataFrame]:
     """
     Load directly the stimlog file (without riglog time offset), and parse data as polars dataframes
 

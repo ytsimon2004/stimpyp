@@ -1,11 +1,11 @@
 import unittest
 
 from stimpyp.dataset.treadmill import load_example_data
-from stimpyp.parser import StimlogBase, SessionInfo
+from stimpyp.parser import AbstractStimlog, SessionInfo
 
 
 class TestStimlog(unittest.TestCase):
-    stimlog: StimlogBase
+    stimlog: AbstractStimlog
 
     @classmethod
     def setUpClass(cls):

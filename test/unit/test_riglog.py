@@ -26,8 +26,4 @@ def test_config():
 
 
 def test_event():
-    x = riglog().camera_event['1P_cam'].n_pulses == 59870
-    print(x)
-
-
-test_event()
+    assert riglog().camera_event['1P_cam'].n_pulses == 59870

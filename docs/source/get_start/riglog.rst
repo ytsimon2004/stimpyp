@@ -62,7 +62,7 @@ log config
 ---------------
 Get config dict for the log file
 
-- **Refer to API**: :attr:`~stimpyp.parser.baselog.RigConfig`
+- **Refer to API**: :attr:`~stimpyp.parser.base.RigConfig`
 
 .. code-block:: python
 
@@ -98,7 +98,7 @@ event time and value
 
 Get specific event information
 
-- **Refer to API** :class:`~stimpyp.parser.baselog.Baselog`
+- **Refer to API** :class:`~stimpyp.parser.base.AbstractLog`
 
 
 .. code-block:: python
@@ -124,4 +124,4 @@ Get specific event information
     print(riglog.lap_event.value_index)
 
 
-1. Use get item method with :attr:`~stimpyp.parser.baselog.Baselog.CameraEvent`. options: ``facecam``, ``eyecam``, ``1P_cam``
+1. Use get item method with :attr:`~stimpyp.parser.base.AbstractLog.CameraEvent`. options: ``facecam``, ``eyecam``, ``1P_cam``

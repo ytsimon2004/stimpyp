@@ -9,7 +9,7 @@ class TestLogParser(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.log = load_example_data('pyvstim', 'circular')
+        cls.log = load_example_data('pyvstim', stim_type='circular')
 
     def test_source_version(self):
         self.assertEqual(self.log.version, 'pyvstim')

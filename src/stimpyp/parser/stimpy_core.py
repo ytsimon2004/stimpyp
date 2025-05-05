@@ -12,10 +12,9 @@ from neuralib.plot.figure import plot_figure
 from neuralib.typing import PathLike
 from neuralib.util.utils import cls_hasattr
 from neuralib.util.verbose import fprint
-from .baselog import Baselog, StimlogBase
-from .baseprot import AbstractStimProtocol
+from .base import AbstractLog, AbstractStimlog, AbstractStimProtocol, AbstractStimulusPattern
 from .session import Session, SessionInfo, get_protocol_sessions
-from .stimulus import GratingPattern, AbstractStimulusPattern, FunctionPattern
+from .stimulus import GratingPattern, FunctionPattern
 from .util import unfold_stimuli_condition, try_casting_number
 
 __all__ = [
@@ -44,7 +43,7 @@ def load_riglog(root_path: PathLike,
 
 
 @final
-class RiglogData(Baselog):
+class RiglogData(AbstractLog):
     """class for handle the riglog file for stimpy **bitbucket/github** version
     (mainly tested in the commits derived from master branch)
     """
@@ -52,7 +51,7 @@ class RiglogData(Baselog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, log_suffix='.riglog', **kwargs)
 
-        self.__stimlog_cache: StimlogBase | None = None
+        self.__stimlog_cache: AbstractStimlog | None = None
         self.__prot_cache: StimpyProtocol | None = None
 
     @classmethod
@@ -101,7 +100,7 @@ class RiglogData(Baselog):
     def stimlog_file(self) -> Path:
         return self.riglog_file.with_suffix('.stimlog')
 
-    def get_stimlog(self) -> StimlogBase:
+    def get_stimlog(self) -> AbstractStimlog:
         match self.__stimlog_cache, self.version:
             case (None, 'stimpy-git'):
                 from .stimpy_git import StimlogGit
@@ -121,7 +120,7 @@ class RiglogData(Baselog):
 
 
 @final
-class Stimlog(StimlogBase):
+class Stimlog(AbstractStimlog):
     """class for handle the stimlog file for stimpy **bitbucket** version
     (mainly tested in the commits derived from master branch)
 

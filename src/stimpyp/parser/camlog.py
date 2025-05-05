@@ -5,14 +5,14 @@ from typing import Any, get_args, Final, Literal, final
 
 import numpy as np
 import polars as pl
-from neuralib.util.utils import uglob
-from neuralib.util.verbose import fprint
 from scipy.interpolate import interp1d
 from typing_extensions import Self
 
-from .baselog import CAMERA_TYPE, Baselog
+from neuralib.util.utils import uglob
+from neuralib.util.verbose import fprint
+from .base import CAMERA_TYPE, AbstractLog
+from .pyvstim import PyVlog
 from .stimpy_core import RiglogData
-from .stimpy_pyv import PyVlog
 
 __all__ = [
     'CAMERA_VERSION',
@@ -136,7 +136,7 @@ class LabCamlog(AbstractCamlog):
         if re.match(event_pattern, content):
             cls.time_info.append(content)
 
-    def get_camera_time(self, log: Baselog,
+    def get_camera_time(self, log: AbstractLog,
                         cam_name: CAMERA_TYPE = '1P_cam',
                         interpolate: bool = True) -> np.ndarray:
         """Interpolate cameralog frames to those recorded by pyvstim.

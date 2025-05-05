@@ -41,5 +41,9 @@ API Reference
    :maxdepth: 1
    :caption: Modules
 
-   api/baselog
-   api/stimpy_core
+   api/stimpyp.parser.base
+   api/stimpyp.parser.stimpy_core
+   api/stimpyp.parser.stimpy_git
+   api/stimpyp.parser.stimulus
+   api/stimpyp.parser.camlog
+   api/stimpyp.parser.preference

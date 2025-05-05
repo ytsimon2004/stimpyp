@@ -44,7 +44,7 @@ html_static_path = ['_static']
 html_theme_options = {
     "navigation_depth": 2,
     "show_toc_level": 4,
-    "github_url": "https://github.com/ytsimon2004/argclz",
+    "github_url": "https://github.com/ytsimon2004/stimpyp",
 
     # ─── Linear reading aids ────────────────────────────────
     # show “Previous” / “Next” links at bottom of each page

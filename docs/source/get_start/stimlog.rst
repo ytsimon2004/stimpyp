@@ -113,7 +113,7 @@ Common attributes
 ---------------------
 Common usage across different stimpy version
 
-- **Refer to API**: :attr:`~stimpyp.parser.baselog.StimlogBase`
+- **Refer to API**: :attr:`~stimpyp.parser.base.AbstractStimlog`
 
 
 config information
