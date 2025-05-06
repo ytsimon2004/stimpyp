@@ -21,22 +21,20 @@ from stimpyp.protocol_parser import (
 
 
 def parser_test(s, expected, **p) -> None:
-    from colorama import Fore, Style
     EXPR_STACK[:] = []
 
     try:
         results = bnf_parser().parseString(s, parseAll=True)
         val = evaluate_stack(EXPR_STACK[:], p)
     except EvaluateStringExpressionError as e:
-        print(s, p, Fore.RED + "FAILED eval:" + Style.RESET_ALL, str(e), EXPR_STACK)
+        print(s, p, "FAILED eval:", str(e), EXPR_STACK)
     except ParseException as pe:
-        print(s, p, Fore.RED + "FAILED parse:" + Style.RESET_ALL, str(pe))
+        print(s, p, "FAILED parse:", str(pe))
     else:
         if val == expected:
-            print(s, p, "=", val, results, "=>", EXPR_STACK, Fore.GREEN + " SUCCESS" + Style.RESET_ALL)
+            print(s, p, "=", val, results, "=>", EXPR_STACK, "SUCCESS")
         else:
-            print(s, p + "!!!", val, "!=", expected, results, "=>", EXPR_STACK,
-                  Fore.RED + " WRONG VALUE" + Style.RESET_ALL)
+            print(s, p, "!!!", val, "!=", expected, results, "=>", EXPR_STACK, "WRONG VALUE")
 
 
 class TestMathEval:
