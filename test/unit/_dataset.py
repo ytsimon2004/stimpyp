@@ -1,8 +1,13 @@
-from typing import Literal
+import shutil
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Literal, ContextManager
+
+import gdown
 
 from neuralib.io.dataset import google_drive_folder
 from neuralib.util.utils import joinn
-from stimpyp.parser import STIMPY_SOURCE_VERSION, PyVlog, RiglogData
+from stimpyp.parser import STIMPY_SOURCE_VERSION, RiglogData, PyVlog
 
 __all__ = ['load_example_data']
 
@@ -40,3 +45,28 @@ def load_example_data(source_version: STIMPY_SOURCE_VERSION, *,
 
     with google_drive_folder(folder, cached=cached, rename_folder=name) as src:
         return cls(root_path=src)
+
+
+@contextmanager
+def google_drive_folder(folder_id: str, *,
+                        quiet: bool = False,
+                        rename_folder: str | None = None,
+                        cached: bool = False,
+                        invalid_cache: bool = False) -> ContextManager[Path]:
+    if rename_folder is not None:
+        folder_name = rename_folder
+    else:
+        folder_name = folder_id
+
+    output_dir = Path('test_data') / folder_name
+
+    try:
+        if output_dir.exists() and any(output_dir.iterdir()) and not invalid_cache:
+            yield output_dir
+        else:
+            output_dir.mkdir(exist_ok=True, parents=True)
+            gdown.download_folder(id=folder_id, output=str(output_dir), quiet=quiet)
+            yield output_dir
+    finally:
+        if not cached:
+            shutil.rmtree(output_dir, ignore_errors=True)

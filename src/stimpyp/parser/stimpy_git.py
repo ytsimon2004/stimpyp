@@ -14,7 +14,7 @@ from .stimpy_core import RiglogData, StimpyProtocol
 from .stimulus import GratingPattern
 
 __all__ = ['StimlogGit',
-           'load_lazy_stimlog']
+           'lazy_load_stimlog']
 
 
 @final
@@ -491,7 +491,7 @@ def _time_offset(rig: RiglogData,
     return offset_t_avg, offset_t_std
 
 
-def load_lazy_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int, pl.DataFrame]:
+def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int, pl.DataFrame]:
     """
     Load directly the stimlog file (without riglog time offset), and parse data as polars dataframes
 

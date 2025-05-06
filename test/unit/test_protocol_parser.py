@@ -1,9 +1,12 @@
+import math
 import unittest
 
 import numpy as np
 import polars as pl
 from polars.testing import assert_frame_equal
+from pyparsing import ParseException
 
+from stimpyp.parser.math_eval import EXPR_STACK, bnf_parser, evaluate_stack, EvaluateStringExpressionError
 from stimpyp.parser.protocol_parser import (
     remove_comments_and_strip,
     lines_to_variables_dict,
@@ -15,6 +18,99 @@ from stimpyp.parser.protocol_parser import (
     eval_dataframe,
     generate_extended_dataframe
 )
+
+
+def parser_test(s, expected, **p) -> None:
+    from colorama import Fore, Style
+    EXPR_STACK[:] = []
+
+    try:
+        results = bnf_parser().parseString(s, parseAll=True)
+        val = evaluate_stack(EXPR_STACK[:], p)
+    except EvaluateStringExpressionError as e:
+        print(s, p, Fore.RED + "FAILED eval:" + Style.RESET_ALL, str(e), EXPR_STACK)
+    except ParseException as pe:
+        print(s, p, Fore.RED + "FAILED parse:" + Style.RESET_ALL, str(pe))
+    else:
+        if val == expected:
+            print(s, p, "=", val, results, "=>", EXPR_STACK, Fore.GREEN + " SUCCESS" + Style.RESET_ALL)
+        else:
+            print(s, p + "!!!", val, "!=", expected, results, "=>", EXPR_STACK,
+                  Fore.RED + " WRONG VALUE" + Style.RESET_ALL)
+
+
+class TestMathEval:
+
+    def test_eval_parser(self):
+        parser_test("t+1", 3, t=2)
+        parser_test("9", 9)
+        parser_test("-9", -9)
+        parser_test("--9", 9)
+        parser_test("-E", -math.e)
+        parser_test("9 + 3 + 6", 9 + 3 + 6)
+        parser_test("9 + 3 / 11", 9 + 3.0 / 11)
+        parser_test("(9 + 3)", (9 + 3))
+        parser_test("(9+3) / 11", (9 + 3.0) / 11)
+        parser_test("9 - 12 - 6", 9 - 12 - 6)
+        parser_test("9 - (12 - 6)", 9 - (12 - 6))
+        parser_test("2*3.14159", 2 * 3.14159)
+        parser_test("3.1415926535*3.1415926535 / 10", 3.1415926535 * 3.1415926535 / 10)
+        parser_test("PI * PI / 10", math.pi * math.pi / 10)
+        parser_test("PI*PI/10", math.pi * math.pi / 10)
+        parser_test("PI^2", math.pi ** 2)
+        parser_test("round(PI^2)", round(math.pi ** 2))
+        parser_test("6.02E23 * 8.048", 6.02e23 * 8.048)
+        parser_test("e / 3", math.e / 3)
+        parser_test("sin(PI/2)", math.sin(math.pi / 2))
+        parser_test("10+sin(PI/4)^2", 10 + math.sin(math.pi / 4) ** 2)
+        parser_test("trunc(E)", int(math.e))
+        parser_test("trunc(-E)", int(-math.e))
+        parser_test("round(E)", round(math.e))
+        parser_test("round(-E)", round(-math.e))
+        parser_test("E^PI", math.e ** math.pi)
+        parser_test("exp(0)", 1)
+        parser_test("exp(1)", math.e)
+        parser_test("2^3^2", 2 ** 3 ** 2)
+        parser_test("(2^3)^2", (2 ** 3) ** 2)
+        parser_test("2^3+2", 2 ** 3 + 2)
+        parser_test("2^3+5", 2 ** 3 + 5)
+        parser_test("2^9", 2 ** 9)
+        parser_test("sgn(-2)", -1)
+        parser_test("sgn(0)", 0)
+        parser_test("sgn(0.1)", 1)
+        parser_test("round(E, 3)", round(math.e, 3))
+        parser_test("round(PI^2, 3)", round(math.pi ** 2, 3))
+        parser_test("sgn(cos(PI/4))", 1)
+        parser_test("sgn(cos(PI/2))", 0)
+        parser_test("sgn(cos(PI*3/4))", -1)
+        parser_test("+(sgn(cos(PI/4)))", 1)
+        parser_test("-(sgn(cos(PI/4)))", -1)
+        parser_test("hypot(3, 4)", 5)
+        parser_test("multiply(3, 7)", 21)
+        parser_test("all(1,1,1)", True)
+        # test("all(1,1,1,1,1,0)", False)
+
+        parser_test("0<3", True)
+        parser_test("0>3", False)
+        parser_test("3>0", True)
+        parser_test("3<0", False)
+        parser_test("5*(0<3)", 5)
+        parser_test("5*(0<3)+2*(0>3)", 5)
+
+        parser_test("3<3", False)
+        parser_test("3<=3", True)
+        parser_test("0<=3", True)
+        parser_test("4<=3", False)
+        parser_test("3>=3", True)
+        parser_test("3>=0", True)
+        parser_test("0>=3", False)
+
+        parser_test("1+1<2*3", True)
+        parser_test("1+(1<2)*3", 4)
+        parser_test("(1+1<2)*3", 0)
+
+        parser_test("(-60+20*0)*(0<3)+(30*0)*(0>=3)", -60)
+        parser_test("(-60+20*4)*(4<3)+(30*4)*(4>=3)", 120)
 
 
 class TestProtocolParser(unittest.TestCase):
