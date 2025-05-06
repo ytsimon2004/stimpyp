@@ -5,8 +5,6 @@ from typing import Literal, ContextManager
 
 import gdown
 
-from neuralib.io.dataset import google_drive_folder
-from neuralib.util.utils import joinn
 from stimpyp import STIMPY_SOURCE_VERSION, RiglogData, PyVlog
 
 __all__ = ['load_example_data']
@@ -45,6 +43,11 @@ def load_example_data(source_version: STIMPY_SOURCE_VERSION, *,
 
     with google_drive_folder(folder, cached=cached, rename_folder=name) as src:
         return cls(root_path=src)
+
+
+def joinn(sep: str, *part: str | None) -> str:
+    """join non-None str with sep."""
+    return sep.join([str(it) for it in part if it is not None])
 
 
 @contextmanager

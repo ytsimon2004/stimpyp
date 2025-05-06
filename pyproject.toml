@@ -20,20 +20,26 @@ classifiers = [
 ]
 
 dependencies = [
-    'attrs',
-    'numpy',
-    'scipy',
-    'pandas',
-    'polars',
-    'pyparsing',
-    'typing_extensions'
+    "attrs",
+    "numpy",
+    "scipy",
+    "pandas",
+    "polars",
+    "pyarrow",
+    "pyparsing",
+    "typing_extensions"
 ]
 
 [project.optional-dependencies]
 
+dev = ["gdown"]
+
 doc = [
-    'sphinx', 'pydata-sphinx-theme', 'sphinx_prompt', 'sphinx_copybutton', 'sphinx-toolbox',
-    'nbsphinx', 'jupyterlab'
+    "sphinx",
+    "pydata-sphinx-theme",
+    "sphinx_prompt",
+    "sphinx_copybutton",
+    "sphinx-toolbox",
 ]
 
 [project.urls]
