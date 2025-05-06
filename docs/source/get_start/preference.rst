@@ -2,7 +2,7 @@ Preference
 ===========
 Experimental Preference(config) file as Python ``TypedDict``
 
-Refer to :class:`~stimpyp.parser.preference.PreferenceDict`
+Refer to :class:`~stimpyp.preference.PreferenceDict`
 
 
 .. code-block:: python
@@ -58,7 +58,7 @@ init preference
 
 .. code-block:: python
 
-    from stimpyp.parser import load_riglog
+    from stimpyp import load_riglog
 
     file = ...  # riglog file path or riglog directory path
     riglog = load_riglog(file)
@@ -69,6 +69,6 @@ init preference
 
 .. code-block:: python
 
-    from stimpyp.parser import load_preference
+    from stimpyp import load_preference
     file = ...  # preference file path
     protocol = load_preference(file)

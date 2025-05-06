@@ -1,7 +1,7 @@
-stimpyp.parser.session
-======================
+stimpyp.session
+===============
 
-.. currentmodule:: stimpyp.parser.session
+.. currentmodule:: stimpyp.session
 
 .. autosummary::
    :toctree: _autosummary

@@ -1,5 +1,6 @@
 import abc
 import re
+import warnings
 from pathlib import Path
 from typing import Any, get_args, Final, Literal, final
 
@@ -8,8 +9,7 @@ import polars as pl
 from scipy.interpolate import interp1d
 from typing_extensions import Self
 
-from neuralib.util.utils import uglob
-from neuralib.util.verbose import fprint
+from ._util import uglob
 from .base import CAMERA_TYPE, AbstractLog
 from .pyvstim import PyVlog
 from .stimpy_core import RiglogData
@@ -97,6 +97,7 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
 @final
 class LabCamlog(AbstractCamlog):
     """Labcam log"""
+
     @classmethod
     def load(cls, root: Path | str,
              suffix: str = '.camlog') -> Self:
@@ -142,7 +143,7 @@ class LabCamlog(AbstractCamlog):
                         interpolate: bool = True) -> np.ndarray:
         """Interpolate camera log frames to those recorded by pyvstim.
 
-        :param log: :class:`~stimpyp.parser.base.AbstractLog`
+        :param log: :class:`~stimpyp.base.AbstractLog`
         :param cam_name: camera name
         :param interpolate: Whether do the interpolation according to the number of log event
         :return: 1D camera time array in sec
@@ -154,8 +155,7 @@ class LabCamlog(AbstractCamlog):
         cam_pulses = len(camera_event)
 
         if cam_pulses != self.frame_id[-1]:
-            fprint(f'Loss frame between riglog[{cam_pulses}] vs camlog[{self.frame_id[-1]}]',
-                   vtype='warning')
+            warnings.warn(f'Loss frame between riglog[{cam_pulses}] vs camlog[{self.frame_id[-1]}]')
 
         if interpolate:
             return interp1d(

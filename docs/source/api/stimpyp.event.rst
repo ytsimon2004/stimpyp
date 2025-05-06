@@ -1,7 +1,7 @@
-stimpyp.parser.event
-====================
+stimpyp.event
+=============
 
-.. currentmodule:: stimpyp.parser.event
+.. currentmodule:: stimpyp.event
 
 .. autosummary::
    :toctree: _autosummary

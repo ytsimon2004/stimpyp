@@ -7,7 +7,7 @@ import gdown
 
 from neuralib.io.dataset import google_drive_folder
 from neuralib.util.utils import joinn
-from stimpyp.parser import STIMPY_SOURCE_VERSION, RiglogData, PyVlog
+from stimpyp import STIMPY_SOURCE_VERSION, RiglogData, PyVlog
 
 __all__ = ['load_example_data']
 

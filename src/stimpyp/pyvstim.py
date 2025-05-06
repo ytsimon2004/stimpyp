@@ -1,5 +1,6 @@
 import dataclasses
 import re
+import warnings
 from pathlib import Path
 from typing import final, Any, Final
 
@@ -7,11 +8,10 @@ import numpy as np
 import polars as pl
 from scipy.interpolate import interp1d
 
-from neuralib.util.verbose import fprint
+from ._util import try_casting_number, unfold_stimuli_condition
 from .base import AbstractLog, AbstractStimlog, AbstractStimProtocol
 from .session import Session, SessionInfo
 from .stimulus import GratingPattern
-from .util import try_casting_number, unfold_stimuli_condition
 
 __all__ = ['PyVlog',
            'StimlogPyVStim',
@@ -278,7 +278,7 @@ class StimlogPyVStim(AbstractStimlog):
         return 1 / (np.diff(self.v_duino_time).mean())
 
     def plot_stim_animation(self):
-        from neuralib.plot.animation import plot_scatter_animation
+        from ._util import plot_scatter_animation
         plot_scatter_animation(self.pos_x,
                                self.pos_y,
                                self.v_duino_time,
@@ -422,7 +422,7 @@ class PyVProtocol(AbstractStimProtocol):
                             exprs.append(match.group(1))
                             n_cycles.append(match.group(2))
                     else:
-                        fprint('loop info not found, check prot file!', vtype='warning')
+                        warnings.warn('loop info not found, check prot file!', vtype='warning')
                         exprs.append('')
                         n_cycles.append(1)
 

@@ -1,7 +1,7 @@
-stimpyp.parser.pyvstim
-======================
+stimpyp.pyvstim
+===============
 
-.. currentmodule:: stimpyp.parser.pyvstim
+.. currentmodule:: stimpyp.pyvstim
 
 .. autosummary::
    :toctree: _autosummary

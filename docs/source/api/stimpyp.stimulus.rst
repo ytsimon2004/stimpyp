@@ -1,7 +1,7 @@
-stimpyp.parser.stimulus
-=======================
+stimpyp.stimulus
+================
 
-.. currentmodule:: stimpyp.parser.stimulus
+.. currentmodule:: stimpyp.stimulus
 
 .. autosummary::
    :toctree: _autosummary

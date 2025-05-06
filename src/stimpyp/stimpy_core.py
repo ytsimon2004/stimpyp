@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from pathlib import Path
 from typing import Any, final, Iterable
 
@@ -8,14 +9,11 @@ import numpy as np
 import polars as pl
 from typing_extensions import Self
 
-from neuralib.plot.figure import plot_figure
-from neuralib.typing import PathLike
-from neuralib.util.utils import cls_hasattr
-from neuralib.util.verbose import fprint
+from ._type import PathLike
+from ._util import unfold_stimuli_condition, try_casting_number, cls_hasattr
 from .base import AbstractLog, AbstractStimlog, AbstractStimProtocol, AbstractStimulusPattern
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimulus import GratingPattern, FunctionPattern
-from .util import unfold_stimuli_condition, try_casting_number
 
 __all__ = [
     'load_riglog',
@@ -86,7 +84,7 @@ class RiglogData(AbstractLog):
         elif isinstance(session, tuple):
             t_all = np.array([dy[s].time for s in session])
             t0, t1 = np.min(t_all), np.max(t_all)
-            fprint(f'get trange from multiple sessions, {session}: t0:{t0}, t1:{t1}')
+            print(f'get trange from multiple sessions, {session}: t0:{t0}, t1:{t1}')
         else:
             raise TypeError('')
 
@@ -494,7 +492,7 @@ class Stimlog(AbstractStimlog):
         try:
             prot = self.riglog_data.get_protocol()
         except AttributeError:
-            fprint('cannot inferred prot file due to class not has riglog attribute', vtype='warning')
+            warnings.warn('cannot inferred prot file due to class not has riglog attribute', vtype='warning')
             pass
         else:
             v_start = self.frame_index == 1
@@ -713,7 +711,7 @@ class Stimlog(AbstractStimlog):
         Get stimulus pattern container
 
         :param with_dur: if extract theoretical duration value from protocol file
-        :return: :class:`~stimpyp.parser.stimulus.AbstractStimulusPattern` based on stim type
+        :return: :class:`~stimpyp.base.AbstractStimulusPattern` based on stim type
         """
         prot = self.riglog_data.get_protocol()
         stim_type = self.riglog_data.get_stimulus_type()
@@ -794,7 +792,7 @@ def diode_time_offset(rig: RiglogData,
         raise TypeError('')
 
     if not diode_offset:
-        fprint('no offset', vtype='warning')
+        warnings.warn('no offset')
         return default_offset_value
 
     #
@@ -803,11 +801,11 @@ def diode_time_offset(rig: RiglogData,
     except DiodeNumberMismatchError as e:
         try:
             first_pulse = _check_if_diode_pulse(rig)
-            fprint(f'{repr(e)}, use the first pulse diff for alignment', vtype='warning')
+            warnings.warn(f'{repr(e)}, use the first pulse diff for alignment')
             return first_pulse
 
         except DiodeSignalMissingError as e:
-            fprint(f'{repr(e)}, use default value', vtype='warning')
+            warnings.warn(f'{repr(e)}, use default value')
             return default_offset_value
 
     #
@@ -815,9 +813,9 @@ def diode_time_offset(rig: RiglogData,
     std_t = float(np.std(t))
 
     if not (0 <= avg_t <= 1):
-        fprint(f'{avg_t} too large, might not be properly calculated, check...', vtype='warning')
+        warnings.warn(f'{avg_t} too large, might not be properly calculated, check...')
 
-    fprint(f'DIODE OFFSET avg: {avg_t}s, std: {std_t}s')
+    print(f'DIODE OFFSET avg: {avg_t}s, std: {std_t}s')
 
     if return_sequential:
         return t
@@ -860,9 +858,11 @@ def _diode_offset_sequential(rig: RiglogData, debug_plot: bool = False) -> np.nd
 def _plot_time_alignment_diode(riglog_screen: np.ndarray,
                                stimlog_time: np.ndarray):
     """Plot time alignment (stimlog time value smaller than riglog)"""
-    with plot_figure(None) as ax:
-        ax.plot(riglog_screen - stimlog_time)
-        ax.set(xlabel='Visual stim #', ylabel='Time diff (s)')
+    from matplotlib import pyplot as plt
+
+    fig, ax = plt.subplots()
+    ax.plot(riglog_screen - stimlog_time)
+    ax.set(xlabel='Visual stim #', ylabel='Time diff (s)')
 
 
 # ======== #

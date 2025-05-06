@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import TypedDict, Literal, Union
 
-from neuralib.typing import PathLike
+from ._type import PathLike
 
 __all__ = [
     'MonitorDict',

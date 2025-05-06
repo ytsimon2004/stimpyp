@@ -1,7 +1,7 @@
-stimpyp.parser.camlog
-=====================
+stimpyp.camlog
+==============
 
-.. currentmodule:: stimpyp.parser.camlog
+.. currentmodule:: stimpyp.camlog
 
 .. autosummary::
    :toctree: _autosummary

@@ -1,7 +1,7 @@
-stimpyp.parser.preference
-=========================
+stimpyp.preference
+==================
 
-.. currentmodule:: stimpyp.parser.preference
+.. currentmodule:: stimpyp.preference
 
 .. autosummary::
    :toctree: _autosummary

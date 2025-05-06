@@ -96,7 +96,7 @@ init stimlog
 
 .. code-block:: python
 
-    from stimpyp.parser import load_riglog
+    from stimpyp import load_riglog
 
     file = ...  # riglog file path or riglog directory path
     riglog = load_riglog(file, diode_offset=True)
@@ -105,15 +105,15 @@ init stimlog
     #                ^^^^^^^^^^^^ [2]
 
 1. Do the diode offset to sync the time between riglog and stimlog, then both logs shared the same timescale
-2. Get the corresponding stimlog object. either :attr:`~stimpyp.parser.stimpy_core.Stimlog` (bitbucket version parser)
-or :attr:`~stimpyp.parser.stimpy_git.StimlogGit` (github version parser)
+2. Get the corresponding stimlog object. either :attr:`~stimpyp.stimpy_core.Stimlog` (bitbucket version parser)
+or :attr:`~stimpyp.stimpy_git.StimlogGit` (github version parser)
 
 
 common attributes
 ---------------------
 Common usage across different stimpy version
 
-- **Refer to API**: :attr:`~stimpyp.parser.base.AbstractStimlog`
+- **Refer to API**: :attr:`~stimpyp.base.AbstractStimlog`
 
 
 config information
@@ -378,9 +378,9 @@ Github version only
 Stimulus pattern
 ------------------------------
 
-Refer to :doc:`../api/stimpyp.parser.stimulus`
+Refer to :doc:`../api/stimpyp.stimulus`
 
-Current only support :class:`~stimpyp.parser.stimulus.GratingPattern` and :class:`~stimpyp.parser.stimulus.FunctionPattern`
+Current only support :class:`~stimpyp.stimulus.GratingPattern` and :class:`~stimpyp.stimulus.FunctionPattern`
 
 - **example of grating stimulus generator**
 

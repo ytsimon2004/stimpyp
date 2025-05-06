@@ -6,8 +6,8 @@ import polars as pl
 from polars.testing import assert_frame_equal
 from pyparsing import ParseException
 
-from stimpyp.parser.math_eval import EXPR_STACK, bnf_parser, evaluate_stack, EvaluateStringExpressionError
-from stimpyp.parser.protocol_parser import (
+from stimpyp.math_eval import EXPR_STACK, bnf_parser, evaluate_stack, EvaluateStringExpressionError
+from stimpyp.protocol_parser import (
     remove_comments_and_strip,
     lines_to_variables_dict,
     EmptyProtocolError,

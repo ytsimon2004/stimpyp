@@ -1,7 +1,7 @@
-stimpyp.parser.base
-===================
+stimpyp.base
+============
 
-.. currentmodule:: stimpyp.parser.base
+.. currentmodule:: stimpyp.base
 
 .. autosummary::
    :toctree: _autosummary

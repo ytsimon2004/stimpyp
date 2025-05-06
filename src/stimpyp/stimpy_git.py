@@ -5,9 +5,8 @@ from typing import Any, Callable, final
 import numpy as np
 import polars as pl
 
-from neuralib.typing import PathLike
-from neuralib.util.deprecation import deprecated_func
-from neuralib.util.verbose import fprint
+from ._type import PathLike
+from ._util import deprecated_func
 from .base import AbstractStimlog
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimpy_core import RiglogData, StimpyProtocol
@@ -476,8 +475,8 @@ def _time_offset(rig: RiglogData,
             offset_t = screen_time[::2] - _p_time[::2]
 
         except ValueError as e:
-            fprint(f'number of diode pulse and stimulus mismatch from {e}', vtype='error')
-            fprint(f'use the first pulse diff for alignment', vtype='error')
+            print(f'number of diode pulse and stimulus mismatch from {e}')
+            print(f'use the first pulse diff for alignment')
             offset_t = screen_time[0] - stm.photo_time[1]
     else:
         raise NotImplementedError('')
@@ -485,8 +484,8 @@ def _time_offset(rig: RiglogData,
     offset_t_avg = float(np.mean(offset_t))
     offset_t_std = float(np.std(offset_t))
 
-    fprint(f'time offset between stimlog and riglog: {round(offset_t_avg, 3)}')
-    fprint(f'offset_std: {round(offset_t_std, 3)}')
+    print(f'time offset between stimlog and riglog: {round(offset_t_avg, 3)}')
+    print(f'offset_std: {round(offset_t_std, 3)}')
 
     return offset_t_avg, offset_t_std
 

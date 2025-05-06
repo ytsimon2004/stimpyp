@@ -9,8 +9,8 @@ import polars as pl
 from polars.polars import ColumnNotFoundError
 from typing_extensions import Self
 
-from neuralib.typing import PathLike
-from neuralib.util.verbose import printdf, fprint
+from ._type import PathLike
+from ._util import printdf
 from .event import RigEvent, CamEvent
 from .preference import PreferenceDict, load_preferences
 from .session import Session, SessionInfo
@@ -28,6 +28,7 @@ __all__ = [
     #
     'AbstractStimulusPattern'
 ]
+
 
 
 STIMPY_SOURCE_VERSION = Literal['pyvstim', 'stimpy-bit', 'stimpy-git', 'debug']
@@ -279,7 +280,7 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
         """
         get protocol (TypeVar ``P``)
 
-        :return: :class:`~stimpyp.parser.baseprot.AbstractStimProtocol()`
+        :return: :class:`~stimpyp.base.AbstractStimProtocol()`
         """
         pass
 
@@ -756,7 +757,7 @@ class AbstractStimulusPattern(Generic[ST], metaclass=abc.ABCMeta):
         """
         init from Baselog children class
 
-        :param rig: :class:`~stimpyp.parser.baselog.Baselog`
+        :param rig: :class:`~stimpyp.base.AbstractLog`
         :return: :class:`StimPattern`
         """
         return rig.get_stimlog().get_stim_pattern()

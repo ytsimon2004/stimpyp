@@ -1,7 +1,7 @@
-stimpyp.parser.protocol_parser
-==============================
+stimpyp.protocol_parser
+=======================
 
-.. currentmodule:: stimpyp.parser.protocol_parser
+.. currentmodule:: stimpyp.protocol_parser
 
 .. autosummary::
    :toctree: _autosummary

@@ -13,6 +13,13 @@ Analysis
 Data
 docs/source/notebooks/test_file
 
+# stimpy output
+*.riglog
+*.stimlog
+*.prot
+*.prefs
+*.npy
+
 # pycharm
 .idea/*
 !.idea/*.iml

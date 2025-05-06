@@ -1,6 +1,6 @@
 import polars as pl
 
-from stimpyp.parser import StimpyProtocol, PyVProtocol
+from stimpyp import StimpyProtocol, PyVProtocol
 from ._dataset import load_example_data
 
 

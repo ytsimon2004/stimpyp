@@ -1,6 +1,6 @@
 import pytest
 
-from stimpyp.parser import RiglogData, PyVlog
+from stimpyp import RiglogData, PyVlog
 from ._dataset import load_example_data
 
 

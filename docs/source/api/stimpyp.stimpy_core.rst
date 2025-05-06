@@ -1,7 +1,7 @@
-stimpyp.parser.stimpy_core
-==========================
+stimpyp.stimpy_core
+===================
 
-.. currentmodule:: stimpyp.parser.stimpy_core
+.. currentmodule:: stimpyp.stimpy_core
 
 .. autosummary::
    :toctree: _autosummary

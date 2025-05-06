@@ -1,6 +1,6 @@
 import polars as pl
 
-from stimpyp.parser import Stimlog, StimlogGit, StimlogPyVStim
+from stimpyp import Stimlog, StimlogGit, StimlogPyVStim
 from ._dataset import load_example_data
 
 

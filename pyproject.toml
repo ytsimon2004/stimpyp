@@ -19,7 +19,15 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-dependencies = ['neura-library', 'pyparsing']
+dependencies = [
+    'attrs',
+    'numpy',
+    'scipy',
+    'pandas',
+    'polars',
+    'pyparsing',
+    'typing_extensions'
+]
 
 [project.optional-dependencies]
 

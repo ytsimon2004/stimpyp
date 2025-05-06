@@ -2,7 +2,7 @@ Protocol
 ==========
 Stimpy protocol file
 
-Refer to :class:`~stimpyp.parser.stimpy_core.StimpyProtocol`
+Refer to :class:`~stimpyp.stimpy_core.StimpyProtocol`
 
 
 **Example of bitbucket version**
@@ -75,7 +75,7 @@ init protocol
 
 .. code-block:: python
 
-    from stimpyp.parser import load_riglog
+    from stimpyp import load_riglog
 
     file = ...  # riglog file path or riglog directory path
     riglog = load_riglog(file)
@@ -86,7 +86,7 @@ init protocol
 
 .. code-block:: python
 
-    from stimpyp.parser import load_protocol
+    from stimpyp import load_protocol
     file = ...  # protocol file path
     protocol = load_protocol(file)
 
