@@ -39,7 +39,7 @@ CONTENT_DIR = """\
 """
 
 # Track generated .rst files and autosummary targets
-generated_rst_files = ['neuralib.rst']
+generated_rst_files = ['stimpyp.rst']
 autosummary_targets = []
 
 # Add source root for import resolution

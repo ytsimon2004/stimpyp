@@ -1,6 +1,8 @@
+from pathlib import Path
+
 import polars as pl
 
-from stimpyp import Stimlog, StimlogGit, StimlogPyVStim
+from stimpyp import Stimlog, StimlogGit, StimlogPyVStim, lazy_load_stimlog
 from ._dataset import load_example_data
 
 
@@ -107,8 +109,13 @@ class TestStimlogGit:
             assert stim.time[0] < stim.time[1]
 
     def test_lazy_load(self):
-        # lazy_load_stimlog()
-        ...
+        _local_file = Path('test_data') / 'riglog_stimpy-git_sftfdir' / 'run00_133601_ori_sqr_12dir_2sf_3sf.stimlog'
+        stimlog = lazy_load_stimlog(_local_file)
+        grating_df = stimlog['Gratings']
+
+        assert isinstance(grating_df, pl.DataFrame)
+        assert grating_df.columns == ['time', 'duration', 'contrast', 'ori', 'phase', 'pos', 'size',
+                                      'flick', 'interpolate', 'mask', 'sf', 'tf', 'opto', 'pattern']
 
 
 class TestStimlogPyV:
