@@ -29,8 +29,6 @@ __all__ = [
     'AbstractStimulusPattern'
 ]
 
-
-
 STIMPY_SOURCE_VERSION = Literal['pyvstim', 'stimpy-bit', 'stimpy-git', 'debug']
 LOG_SUFFIX = Literal['.log', '.riglog']
 CAMERA_TYPE = Literal['facecam', 'eyecam', '1P_cam']
@@ -83,18 +81,20 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
         else:
             self.riglog_file = root_path
 
+        # set when get config
+        self._with_square_brackets: bool = True
+        self._skip_rows: int = 0
+
         self.log_config = self._get_log_config()
         self.version = self.log_config['source_version']
-
-        self.dat = self._cache_asarray(self.riglog_file)
+        self.dat = self._cache_asarray(self.riglog_file, self._with_square_brackets)
 
         #
         self._diode_offset = diode_offset
         self._reset_mapping = reset_mapping
 
     @classmethod
-    def _find_logfile(cls,
-                      root: Path,
+    def _find_logfile(cls, root: Path,
                       log_suffix: LOG_SUFFIX) -> Path:
 
         f = list(root.glob(f'*{log_suffix}'))
@@ -144,6 +144,12 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
                         content = line.replace('# RIG CSV: ', '').strip()
                         ret['fields'] = tuple(content.split(','))
 
+                # 2025 new update log...
+                elif '#' not in line and 'code' in line:
+                    ret['fields'] = tuple(line.split(','))
+                    self._skip_rows = 1
+                    self._with_square_brackets = False
+
         # infer
         if 'opto' not in ret['codes']:
             ret['source_version'] = 'stimpy-bit'
@@ -158,7 +164,7 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
 
     @classmethod
     @abc.abstractmethod
-    def _cache_asarray(cls, filepath: Path) -> np.ndarray:
+    def _cache_asarray(cls, filepath: Path, square_brackets: bool = True) -> np.ndarray:
         pass
 
     # ============ #
@@ -502,7 +508,7 @@ class AbstractStimlog(Generic[R], metaclass=abc.ABCMeta):
         return RigEvent('visual_stim', np.vstack((t, ret)).T)
 
     @abc.abstractmethod
-    def session_trials(self) -> dict[Session, SessionInfo]:
+    def session_trials(self) -> dict[Session, SessionInfo]:  # TODO might not generic enough
         """get the session:SessionInfo dictionary (experimental and user-specific)"""
         pass
 

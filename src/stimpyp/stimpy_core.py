@@ -53,19 +53,23 @@ class RiglogData(AbstractLog):
         self.__prot_cache: StimpyProtocol | None = None
 
     @classmethod
-    def _cache_asarray(cls, filepath: Path) -> np.ndarray:
+    def _cache_asarray(cls, filepath: Path, square_brackets: bool = True) -> np.ndarray:
         output = filepath.with_name(filepath.stem + '_riglog.npy')
 
         if not output.exists():
-            riglog = np.loadtxt(
-                filepath,
-                delimiter=',',
-                comments=['#', 'None'],
-                converters={
-                    0: lambda it: float(it[1:]),  # it: parameter name: the text of the first column
-                    3: lambda it: float(it[:-1])
-                }
-            )
+            if square_brackets:
+                riglog = np.loadtxt(
+                    filepath,
+                    delimiter=',',
+                    comments=['#', 'None'],
+                    converters={
+                        0: lambda it: float(it[1:]),
+                        3: lambda it: float(it[:-1])
+                    },
+                )
+            else:
+                riglog = pl.read_csv(filepath, comment_prefix='#').to_numpy()
+
             np.save(output, riglog)
 
         return np.load(output)
@@ -201,7 +205,7 @@ class Stimlog(AbstractStimlog):
         try:
             stim_type = self.riglog_data.get_stimulus_type()
         except AttributeError:
-            fprint(f'no riglog init, for only testing, some methods might causes problem', vtype='warning')
+            print(f'no riglog init, for only testing, some methods might causes problem', vtype='warning')
             return self._reset_gratings()  # testing
 
         match stim_type, self._reset_mapping:
