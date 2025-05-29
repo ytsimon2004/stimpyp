@@ -5,14 +5,15 @@ from typing import Literal, ContextManager
 
 import gdown
 
-from stimpyp import STIMPY_SOURCE_VERSION, RiglogData, PyVlog
+from stimpyp import STIMPY_SOURCE_VERSION, RiglogData, PyVlog, load_camlog, CAMERA_VERSION
 
-__all__ = ['load_example_data']
+__all__ = ['load_example_riglog',
+           'load_example_camlog']
 
 
-def load_example_data(source_version: STIMPY_SOURCE_VERSION, *,
-                      stim_type: Literal['sftfdir', 'circular'] | None = None,
-                      cached: bool = True) -> RiglogData | PyVlog:
+def load_example_riglog(source_version: STIMPY_SOURCE_VERSION, *,
+                        stim_type: Literal['sftfdir', 'circular'] | None = None,
+                        cached: bool = True) -> RiglogData | PyVlog:
     """
     Load log data for treadmill task with optional visual stimulation
 
@@ -45,6 +46,19 @@ def load_example_data(source_version: STIMPY_SOURCE_VERSION, *,
         return cls(root_path=src)
 
 
+def load_example_camlog(source_version: CAMERA_VERSION, cached: bool = True):
+    match source_version:
+        case 'labcams':
+            file_id = '1u8mqFZxv6AbKiKtswJBbzPLyBAUYSE2_'
+        case 'pycams':
+            file_id = '1coAAjycdQEXzMw36CVdOYPtcELlkDnRQ'
+        case _:
+            raise ValueError('')
+
+    with google_drive_file(file_id, cached=cached) as f:
+        return load_camlog(f, camera_version=source_version)
+
+
 def joinn(sep: str, *part: str | None) -> str:
     """join non-None str with sep."""
     return sep.join([str(it) for it in part if it is not None])
@@ -73,3 +87,40 @@ def google_drive_folder(folder_id: str, *,
     finally:
         if not cached:
             shutil.rmtree(output_dir, ignore_errors=True)
+
+
+@contextmanager
+def google_drive_file(file_id: str,
+                      *,
+                      quiet: bool = False,
+                      rename_file: str | None = None,
+                      cached: bool = False,
+                      invalid_cache: bool = False) -> ContextManager[Path]:
+    """
+    Download file from Google Drive. If not ``cached``, then delete afterward.
+
+    :param file_id: Google Drive file ID used to identify the file to be downloaded.
+    :param quiet: Boolean flag to suppress output from the download process.
+    :param rename_file: Optional string to rename the downloaded file.
+    :param cached: Boolean flag to retain the downloaded file after usage.
+    :param invalid_cache: Boolean flag to force re-download even if the file exists in the cache.
+    :return: A context manager yielding the path to the downloaded file.
+    """
+    if rename_file is not None:
+        file = rename_file
+    else:
+        file = file_id
+
+    output_file = Path('test_data') / file
+
+    try:
+        if output_file.exists() and not invalid_cache:
+            yield output_file
+        else:
+            url = f"https://drive.google.com/uc?id={file_id}"
+            print(f'{url=}')
+            gdown.download(url, str(output_file), quiet=quiet)
+            yield output_file
+    finally:
+        if not cached:
+            output_file.unlink(missing_ok=True)

@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import abc
 import re
 import warnings
 from pathlib import Path
-from typing import Any, get_args, Final, Literal, final
+from typing import Any, get_args, Literal, final
 
 import numpy as np
 import polars as pl
@@ -16,13 +18,35 @@ from .stimpy_core import RiglogData
 
 __all__ = [
     'CAMERA_VERSION',
-    #
+    'load_camlog',
     'AbstractCamlog',
     'LabCamlog',
     'PyCamlog'
 ]
 
-CAMERA_VERSION = Literal['labcam', 'pycam']
+CAMERA_VERSION = Literal['labcams', 'pycams']
+
+
+def load_camlog(file: Path | str, *,
+                camera_version: CAMERA_VERSION = 'labcams',
+                suffix: str | None = None) -> LabCamlog | PyCamlog:
+    """
+    Read the camera recording log file
+
+    :param file: log file for the camera
+    :param camera_version: :class:`CAMERA_VERSION`
+    :param suffix: suffix for the log file, If None then auto infer from :class:`CAMERA_VERSION`
+    """
+    file = Path(file)
+
+    match camera_version:
+        case 'labcams':
+            return LabCamlog.load(file, suffix=suffix or '.camlog')
+        case 'pycams':
+            return PyCamlog.load(file, suffix=suffix or '.log')
+        case _:
+            raise ValueError(f'Unknown camera_version: {camera_version!r}. '
+                             f'Expected one of {get_args(CAMERA_VERSION)}')
 
 
 class AbstractCamlog(metaclass=abc.ABCMeta):
@@ -39,29 +63,27 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
     time_info: list[str] | None = []
     """i.e., # [21-03-02 15:23:08]. Note that time could be duplicated"""
 
-    def __init__(self,
-                 root,
-                 frame_id,
-                 timestamp,
-                 comment_info,
-                 time_info=None):
-        self.root: Final[Path] = root
-        self.frame_id: Final[np.ndarray] = frame_id
-        self.timestamp: Final[np.ndarray] = timestamp
-        self.comment_info: Final[dict[str, Any]] = comment_info
-        self.time_info: Final[list[str] | None] = time_info
+    def __init__(self, root: Path,
+                 frame_id: np.ndarray,
+                 timestamp: np.ndarray,
+                 comment_info: dict[str, Any],
+                 time_info: list[str] | None = None):
+        self.root = root
+        self.frame_id = frame_id
+        self.timestamp = timestamp
+        self.comment_info = comment_info
+        self.time_info = time_info
 
     def __repr__(self):
         ret = pl.DataFrame().with_columns(
             pl.Series(self.frame_id).alias('frame_id'),
-            pl.Series(self.timestamp).alias('time')
+            pl.Series(self.timestamp).alias('timestamp')
         )
         return str(ret)
 
     @classmethod
     @abc.abstractmethod
-    def load(cls, root: Path | str,
-             suffix: str = '.camlog') -> Self:
+    def load(cls, root: Path | str, suffix: str = '.camlog') -> Self:
         """
         load/parse the camera log file
 
@@ -78,8 +100,7 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_camera_time(self,
-                        riglog: RiglogData | PyVlog,
+    def get_camera_time(self, riglog: RiglogData | PyVlog,
                         cam_name: str = '1P_cam') -> np.ndarray:
         pass
 
@@ -88,6 +109,10 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
     def nframes(self) -> int:
         """number of frames"""
         return self.frame_id[-1]
+
+    def to_polars(self) -> pl.DataFrame:
+        """convert :attr:`frame_id` and :attr:`timestamp` to polars DataFrame"""
+        return pl.DataFrame({'frame_id': self.frame_id, 'time': self.timestamp})
 
 
 # ======= #
@@ -173,9 +198,7 @@ class LabCamlog(AbstractCamlog):
 
 @final
 class PyCamlog(AbstractCamlog):
-    """Pycams log, 2023 AP dev
-    TODO not test yet
-    """
+    """Pycams log"""
 
     @classmethod
     def load(cls, root: Path | str, suffix: str = '.log') -> Self:
@@ -183,12 +206,14 @@ class PyCamlog(AbstractCamlog):
         if root.is_dir():
             log_file = uglob(root, f'*{suffix}')
             root = root
-        else:
+        elif root.is_file():
             log_file = root
             root = root.parent
+        else:
+            raise FileNotFoundError(f'{root} not found')
 
+        #
         log_data = []
-
         with log_file.open() as f:
             for line, content in enumerate(f):
                 content = content.strip()
@@ -211,4 +236,4 @@ class PyCamlog(AbstractCamlog):
             cls.comment_info.update({name: value})
 
     def get_camera_time(self, riglog: RiglogData, cam_name: CAMERA_TYPE = '1P_cam'):
-        raise NotImplementedError('')
+        raise NotImplementedError('pycams under dev')

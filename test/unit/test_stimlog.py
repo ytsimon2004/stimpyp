@@ -3,7 +3,7 @@ from pathlib import Path
 import polars as pl
 
 from stimpyp import Stimlog, StimlogGit, StimlogPyVStim, lazy_load_stimlog
-from ._dataset import load_example_data
+from ._dataset import load_example_riglog
 
 
 class TestStimlogBit:
@@ -12,7 +12,7 @@ class TestStimlogBit:
     # noinspection PyTypeChecker
     @classmethod
     def setup_class(cls):
-        cls.stimlog = load_example_data('stimpy-bit', stim_type='sftfdir').get_stimlog()
+        cls.stimlog = load_example_riglog('stimpy-bit', stim_type='sftfdir').get_stimlog()
 
     def test_config(self):
         assert self.stimlog.config == {'commit_hash': '6d30281', 'missed_frames': 0}
@@ -53,7 +53,7 @@ class TestStimlogGit:
     # noinspection PyTypeChecker
     @classmethod
     def setup_class(cls):
-        cls.stimlog = load_example_data('stimpy-git', stim_type='sftfdir').get_stimlog()
+        cls.stimlog = load_example_riglog('stimpy-git', stim_type='sftfdir').get_stimlog()
 
     def test_config(self):
         assert self.stimlog.config == {
@@ -123,7 +123,7 @@ class TestStimlogPyV:
 
     @classmethod
     def setup_class(cls):
-        cls.stimlog = load_example_data('pyvstim', stim_type='circular').get_stimlog()
+        cls.stimlog = load_example_riglog('pyvstim', stim_type='circular').get_stimlog()
 
     def test_config(self):
         assert self.stimlog.config == {

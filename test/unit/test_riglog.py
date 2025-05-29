@@ -1,7 +1,7 @@
 import pytest
 
 from stimpyp import RiglogData, PyVlog
-from ._dataset import load_example_data
+from ._dataset import load_example_riglog
 
 
 class TestRiglogBit:
@@ -9,7 +9,7 @@ class TestRiglogBit:
 
     @classmethod
     def setup_class(cls):
-        cls.riglog = load_example_data('stimpy-bit', stim_type='sftfdir')
+        cls.riglog = load_example_riglog('stimpy-bit', stim_type='sftfdir')
 
     def test_config(self):
         assert self.riglog.log_config == {
@@ -45,7 +45,7 @@ class TestRiglogGit:
 
     @classmethod
     def setup_class(cls):
-        cls.riglog = load_example_data('stimpy-git', stim_type='sftfdir')
+        cls.riglog = load_example_riglog('stimpy-git', stim_type='sftfdir')
 
     def test_config(self):
         assert self.riglog.log_config == {
@@ -82,7 +82,7 @@ class TestRiglogPyV:
 
     @classmethod
     def setup_class(cls):
-        cls.log = load_example_data('pyvstim', stim_type='circular')
+        cls.log = load_example_riglog('pyvstim', stim_type='circular')
 
     def test_config(self):
         assert self.log.log_config == {

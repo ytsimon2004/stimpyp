@@ -1,7 +1,7 @@
 import polars as pl
 
 from stimpyp import StimpyProtocol, PyVProtocol
-from ._dataset import load_example_data
+from ._dataset import load_example_riglog
 
 
 class TestProtocolBit:
@@ -9,7 +9,7 @@ class TestProtocolBit:
 
     @classmethod
     def setup_class(cls):
-        cls.protocol = load_example_data('stimpy-bit', stim_type='sftfdir').get_protocol()
+        cls.protocol = load_example_riglog('stimpy-bit', stim_type='sftfdir').get_protocol()
 
     def test_options(self):
         assert self.protocol.version == 'stimpy-bit'
@@ -36,7 +36,7 @@ class TestProtocolGit:
 
     @classmethod
     def setup_class(cls):
-        cls.protocol = load_example_data('stimpy-git', stim_type='sftfdir').get_protocol()
+        cls.protocol = load_example_riglog('stimpy-git', stim_type='sftfdir').get_protocol()
 
     def test_options(self):
         assert self.protocol.options == {
@@ -64,7 +64,7 @@ class TestProtocolPyV:
 
     @classmethod
     def setup_class(cls):
-        cls.protocol = load_example_data('pyvstim', stim_type='circular').get_protocol()
+        cls.protocol = load_example_riglog('pyvstim', stim_type='circular').get_protocol()
 
     def test_options(self):
         assert self.protocol.options == {

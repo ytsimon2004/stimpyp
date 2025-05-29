@@ -8,6 +8,7 @@ stimpyp.camlog
    :nosignatures:
 
    CAMERA_VERSION
+   load_camlog
    AbstractCamlog
    LabCamlog
    PyCamlog
