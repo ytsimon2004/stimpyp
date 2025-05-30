@@ -164,7 +164,7 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
 
     @classmethod
     @abc.abstractmethod
-    def _cache_asarray(cls, filepath: Path, square_brackets: bool = True) -> np.ndarray:
+    def _cache_asarray(cls, filepath: Path, square_brackets: bool) -> np.ndarray:
         pass
 
     # ============ #
@@ -304,7 +304,7 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
         return load_preferences(self.pref_file)
 
     @abc.abstractmethod
-    def get_stimlog(self) -> S:
+    def get_stimlog(self, *args) -> S:
         """get stimlog (TypeVar ``S``)
 
         :return: :class:`~AbstractStimlog`
@@ -633,7 +633,7 @@ class AbstractStimProtocol(metaclass=abc.ABCMeta):
             try:
                 return self.visual_stimuli_dataframe.get_column(item).to_numpy()
             except ColumnNotFoundError as e:
-                fprint(f'INVALID: {item}, select from {tuple(self.visual_stimuli_dataframe.columns)}', vtype='error')
+                print(f'INVALID: {item}, select from {tuple(self.visual_stimuli_dataframe.columns)}')
                 raise e
 
         elif isinstance(item, int):

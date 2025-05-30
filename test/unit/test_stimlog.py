@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import polars as pl
+import pytest
 
 from stimpyp import Stimlog, StimlogGit, StimlogPyVStim, lazy_load_stimlog
 from ._dataset import load_example_riglog
@@ -77,9 +78,13 @@ class TestStimlogGit:
 
     def test_dataframe(self):
         df_visual = self.stimlog.get_visual_stim_dataframe()
+        print(df_visual)
         df_statemachine = self.stimlog.get_state_machine_dataframe()
+        print(df_statemachine)
         df_photo = self.stimlog.get_photo_indicator_dataframe()
+        print(df_photo)
         df_logdict = self.stimlog.get_log_dict_dataframe()
+        print(df_logdict)
         df_profile = self.stimlog.profile_dataframe
 
         assert isinstance(df_visual, pl.DataFrame)
@@ -116,6 +121,54 @@ class TestStimlogGit:
         assert isinstance(grating_df, pl.DataFrame)
         assert grating_df.columns == ['time', 'duration', 'contrast', 'ori', 'phase', 'pos', 'size',
                                       'flick', 'interpolate', 'mask', 'sf', 'tf', 'opto', 'pattern']
+
+
+@pytest.mark.skip(reason="need real dataset to test this")
+class TestStimpyGitCSV:
+    stimlog: StimlogGit
+
+    @classmethod
+    def setup_class(cls):
+        # cls.stimlog = load_riglog(f).get_stimlog()
+        ...
+
+    def test_log_info_header(self):
+        assert self.stimlog.log_info == {}
+        assert self.stimlog.log_header == {}
+
+    def test_visual_stim_dataframe(self):
+        df_visual = self.stimlog.get_visual_stim_dataframe()
+        assert isinstance(df_visual, pl.DataFrame)
+        assert df_visual.columns == ['time', 'duration', 'contrast', 'ori', 'phase', 'pos', 'size',
+                                     'flick', 'interpolate', 'mask', 'sf', 'tf', 'opto', 'pattern']
+
+    def test_state_machine_dataframe(self):
+        df_statemachine = self.stimlog.get_state_machine_dataframe()
+        assert isinstance(df_statemachine, pl.DataFrame)
+        assert df_statemachine.columns == ['time', 'state', 'prev_state']
+
+    def test_photo_indicator_dataframe(self):
+        df_photo = self.stimlog.get_photo_indicator_dataframe()
+        assert isinstance(df_photo, pl.DataFrame)
+        assert df_photo.columns == ['time', 'state', 'size', 'pos', 'units', 'mode', 'frames', 'enabled']
+
+    def test_log_dict_dataframe(self):
+        df_logdict = self.stimlog.get_log_dict_dataframe()
+        assert isinstance(df_logdict, pl.DataFrame)
+        assert df_logdict.columns == ['time', 'block_nr', 'trial_nr', 'condition_nr', 'trial_type']
+
+    def test_stimulus_segments(self):
+        print(self.stimlog.stimulus_segment)
+
+    def test_stimulus_generator(self):
+        for stim in self.stimlog.get_stim_pattern().foreach_stimulus(name=True):
+            assert hasattr(stim, 'index')
+            assert hasattr(stim, 'time')
+            assert hasattr(stim, 'sf')
+            assert hasattr(stim, 'tf')
+            assert hasattr(stim, 'direction')
+            assert len(stim.time) == 2
+            assert stim.time[0] < stim.time[1]
 
 
 class TestStimlogPyV:

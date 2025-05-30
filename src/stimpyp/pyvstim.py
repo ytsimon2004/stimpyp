@@ -81,7 +81,7 @@ class PyVlog(AbstractLog):
         return self.log_config
 
     @classmethod
-    def _cache_asarray(cls, filepath: Path) -> np.ndarray:
+    def _cache_asarray(cls, filepath: Path, square_brackets=False) -> np.ndarray:
         output = filepath.with_name(filepath.stem + '_log.npy')
 
         if not output.exists():

@@ -53,7 +53,7 @@ class RiglogData(AbstractLog):
         self.__prot_cache: StimpyProtocol | None = None
 
     @classmethod
-    def _cache_asarray(cls, filepath: Path, square_brackets: bool = True) -> np.ndarray:
+    def _cache_asarray(cls, filepath: Path, square_brackets: bool) -> np.ndarray:
         output = filepath.with_name(filepath.stem + '_riglog.npy')
 
         if not output.exists():
@@ -102,11 +102,21 @@ class RiglogData(AbstractLog):
     def stimlog_file(self) -> Path:
         return self.riglog_file.with_suffix('.stimlog')
 
-    def get_stimlog(self) -> AbstractStimlog:
+    def get_stimlog(self, csv_output: bool = True) -> AbstractStimlog:
+        """
+        Initialize the stimlog instance
+
+        :param csv_output: if stimlog is exported to separated csv file
+        """
         match self.__stimlog_cache, self.version:
             case (None, 'stimpy-git'):
                 from .stimpy_git import StimlogGit
-                self.__stimlog_cache = StimlogGit(self, self.stimlog_file, self._reset_mapping, self._diode_offset)
+                self.__stimlog_cache = StimlogGit(
+                    self, self.stimlog_file,
+                    self._reset_mapping,
+                    csv_output=csv_output,
+                    diode_offset=self._diode_offset
+                )
             case (None, 'stimpy-bit'):
                 self.__stimlog_cache = Stimlog(self, self.stimlog_file, self._reset_mapping, self._diode_offset)
             case (None, _):
@@ -189,7 +199,7 @@ class Stimlog(AbstractStimlog):
         :param riglog: ``RiglogData``
         :param file_path: stimlog filepath
         :param diode_offset: If do the diode offset to sync the time to riglog
-        :param sequential_offset: do the sequential offset throughout the recording.
+        :param sequential_offset: do the sequential offset to sync time with :class:`RiglogData`
         """
 
         super().__init__(riglog, file_path, reset_mapping)

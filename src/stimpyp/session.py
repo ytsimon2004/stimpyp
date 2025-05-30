@@ -37,13 +37,16 @@ ProtocolAlias = str
 Session = str
 
 
+# TODO no need stimlog?
+# TODO check numpy2.0 type
+
 def get_protocol_name(filename: Path | 'AbstractStimlog') -> ProtocolAlias:
     from .base import AbstractStimlog
     if isinstance(filename, AbstractStimlog):
         filename = filename.stimlog_file
 
     filename = filename.stem
-    if '_ori_sqr_12dir_2tf_3sf_bas' in filename or 'ori' in filename:
+    if 'ori' in filename:
         return 'visual_open_loop'
     elif '_LDL' in filename:
         return 'light_dark_light'

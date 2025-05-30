@@ -1,6 +1,8 @@
+import ast
 import re
+from io import StringIO
 from pathlib import Path
-from typing import Any, Callable, final
+from typing import Any, final, Literal
 
 import numpy as np
 import polars as pl
@@ -15,6 +17,9 @@ from .stimulus import GratingPattern
 __all__ = ['StimlogGit',
            'lazy_load_stimlog']
 
+
+# TODO add logging for debug during parsing
+# TODO check offset issue with true dataset
 
 @final
 class StimlogGit(AbstractStimlog):
@@ -33,9 +38,9 @@ class StimlogGit(AbstractStimlog):
     """
 
     log_info: dict[int, str]
-    """{0: <'Gratings', ...>, 1: 'PhotoIndicator', 2: 'StateMachine', 3: 'LogDict'}"""
+    """{0: <'Gratings', ...>, 1: 'PhotoIndicator', 2: 'StateMachine', 3: 'LogDict'}. empty if as csv output"""
     log_header: dict[int, list[str]]
-    """list of header"""
+    """list of header. empty if as csv output"""
     log_data: dict[int, list[tuple[Any, ...]]]
     """only for StateMachine(2) and LogDict(3)"""
 
@@ -74,11 +79,32 @@ class StimlogGit(AbstractStimlog):
     def __init__(self, riglog: RiglogData,
                  file_path: PathLike,
                  reset_mapping: dict[int, list[str]] | None = None,
+                 csv_output: bool = False,
                  diode_offset: bool = True):
+        """
+        init based on :class:`~stimpyp.stimpy_core.RiglogData` information
+
+        :param riglog: :class:`~stimpyp.stimpy_core.RiglogData`
+        :param file_path: filepath of stimlog. could be None if shared log (pyvstim case)
+        :param reset_mapping: Customized mapping for ``reset()``
+            - key: corresponding to :attr:`log_header`
+            - value: list of field, should be the same name as class annotations
+        :param csv_output: if stimlog is exported to separated csv file
+        :param diode_offset: do the offset to sync time with :class:`~stimpyp.stimpy_core.RiglogData`
+        """
 
         super().__init__(riglog, file_path, reset_mapping)
+
         self.diode_offset = diode_offset
+
+        self._csv_output = csv_output
+        self._csv_added = []
+
         self._cache_time_offset: float | None = None
+        self._cache_visual_stim_dataframe: pl.DataFrame | None = None
+        self._cache_photo_indicator_dataframe: pl.DataFrame | None = None
+        self._cache_state_machine_dataframe: pl.DataFrame | None = None
+        self._cache_log_dict_dataframe: pl.DataFrame | None = None
 
         self._reset()
 
@@ -117,19 +143,26 @@ class StimlogGit(AbstractStimlog):
                     self.config['end_time'] = float(content[7:].strip())
                 elif content.startswith('# Missed') and content.endswith('frames'):
                     self.config['missed_frames'] = int(content.split(' ')[2])
-                elif content.startswith('#'):
+                elif self._csv_output and content.startswith('#') and content.endswith('added'):  # csv
+                    self._csv_added.append(content.split(' ')[1])
+                elif content.startswith('#'):  # other
                     print(f'ignore header line at {line + 1} : {content}')
-
                 else:
-                    try:
-                        self._reset_line(log_data, line + 1, content)
-                    except BaseException:
-                        raise RuntimeError(f'bad format line at {line + 1} : {content}')
+                    if not self._csv_output:
+                        try:
+                            self._reset_line(log_data, line + 1, content)
+                        except BaseException:
+                            raise RuntimeError(f'bad format line at {line + 1} : {content}')
+
+        if self._csv_output:
+            for log_type in self._csv_added:
+                print(f'find csv: {log_type}')
+                self._reset_csv(log_type)
 
         self.log_data = self._reset_final(log_data)
 
     def _reset_code_version(self, info_value: str):
-        """for ### CODE VERSION,  commit hash and tags"""
+        """for ### CODE VERSION, commit hash and tags"""
         info_value = info_value.strip().split(' ')
         commits = info_value[info_value.index('hash:') + 1]
         tag = info_value[info_value.index('tags:') + 1]
@@ -148,6 +181,10 @@ class StimlogGit(AbstractStimlog):
         self.log_info[code] = name
         self.log_header[code] = header
         return True
+
+    # ======================== #
+    # Reset All-in-One Stimlog #
+    # ======================== #
 
     def _reset_line(self, log_data: dict[int, list], line: int, content: str):
         message: str
@@ -212,6 +249,125 @@ class StimlogGit(AbstractStimlog):
 
         return log_data
 
+    # =================== #
+    # Reset Separated CSV #
+    # =================== #
+
+    def _reset_csv(self, log_type: Literal['FunctionBased', 'Gratings', 'LogDict', 'PhotoIndicator', 'StateMachine']):
+        file = self.stimlog_file.parent / f'{self.stimlog_file.stem}_{log_type}.csv'
+
+        if 'Gratings' in log_type:
+            self._reset_grating_csv(file)
+        elif 'PhotoIndicator' in log_type:
+            self._reset_photo_indicator_csv(file)
+        elif 'StateMachine' in log_type:
+            self._reset_state_machine_csv(file)
+        elif 'LogDict' in log_type:
+            self._reset_log_dict_csv(file)
+        else:
+            raise NotImplementedError(f'{log_type} not yet supported')
+
+    def _reset_grating_csv(self, file: Path, cleanup: bool = True):
+        """
+
+        :param file:
+        :param cleanup: remove redundant datapoint in ``time`` column
+        :return:
+        """
+        df = list_value_parser(file, cols=['pos', 'size'])
+
+        if cleanup:  # remove redundant datapoint
+            orig = df.columns
+            cols = [col for col in orig if col != 'time']
+
+            df = (
+                df.group_by(cols, maintain_order=True)
+                .agg(pl.col('*').first())
+                .sort('time')
+                .select(orig)  # restore original column order
+            )
+
+        self._cache_visual_stim_dataframe = df
+        self.time = df['time'].to_numpy()
+        self.duration = df['duration'].to_numpy()
+        self.contrast = df['contrast'].to_numpy()
+        self.ori = df['ori'].to_numpy()
+        self.phase = df['phase'].to_numpy()
+        self.pos_xy = df['pos'].to_numpy()
+        self.size_xy = df['size'].to_numpy()
+        self.flick = df['flick'].to_numpy()
+        self.interpolate = df['interpolate'].to_numpy()
+        self.mask = df['mask'].to_numpy()
+        self.sf = df['sf'].to_numpy()
+        self.tf = df['tf'].to_numpy()
+        self.opto = df['opto'].to_numpy()
+        self.pattern = df['pattern'].to_numpy()
+
+    def _reset_photo_indicator_csv(self, file: Path, cleanup: bool = True):
+        """
+
+        :param file:
+        :param cleanup: remove redundant datapoint keep first for photodiode ``state`` switching
+        :return:
+        """
+        df = list_value_parser(file, cols=['pos'])
+
+        if cleanup:
+            df = df.filter(
+                (pl.col("state") != pl.col("state").shift(1)) |
+                (pl.arange(0, df.height) == 0)  # keep first row
+            )
+
+        self._cache_photo_indicator_dataframe = df
+        self.photo_time = df['time'].to_numpy()
+        self.photo_state = df['state'].to_numpy()
+        self.photo_size = df['size'].to_numpy()
+        self.photo_pos = df['pos'].to_numpy()
+        self.photo_units = df['units'].to_numpy()
+        self.photo_mode = df['mode'].to_numpy()
+        self.photo_frames = df['frames'].to_numpy()
+        self.photo_enable = df['enabled'].to_numpy()
+
+    def _reset_state_machine_csv(self, file: Path, cleanup: bool = True):
+        """
+
+        :param file:
+        :param cleanup: remove redundant datapoint keep first for statemachine ``state`` switching
+        :return:
+        """
+        df = pl.read_csv(file)
+
+        if cleanup:
+            df = df.filter((pl.col("state") != pl.col("state").shift(1)) | (pl.arange(0, df.height) == 0))
+
+        self._cache_state_machine_dataframe = df
+
+    def _reset_log_dict_csv(self, file: Path, cleanup: bool = True):
+        """
+
+        :param file:
+        :param cleanup: remove redundant datapoint in ``time``
+        :return:
+        """
+        df = pl.read_csv(file)
+
+        if cleanup:
+            orig = df.columns
+            cols = [col for col in orig if col != 'time']
+
+            df = (
+                df.group_by(cols, maintain_order=True)
+                .agg(pl.col('*').first())
+                .sort('time')
+                .select(orig)  # restore original column order
+            )
+
+        self._cache_log_dict_dataframe = df
+
+    # ============= #
+    # Get DataFrame #
+    # ============= #
+
     def get_visual_stim_dataframe(self) -> pl.DataFrame:
         """
         Visual presentation dataframe::
@@ -230,23 +386,24 @@ class StimlogGit(AbstractStimlog):
 
         :return:
         """
-        df = pl.DataFrame().with_columns(
-            pl.Series(self.time).alias('time'),
-            pl.Series(self.duration).alias('duration'),
-            pl.Series(self.contrast).alias('contrast'),
-            pl.Series(self.ori).alias('ori'),
-            pl.Series(self.phase).alias('phase'),
-            pl.Series(self.pos_xy).alias('pos'),
-            pl.Series(self.size_xy).alias('size'),
-            pl.Series(self.flick).alias('flick'),
-            pl.Series(self.interpolate).alias('interpolate'),
-            pl.Series(self.mask).alias('mask'),
-            pl.Series(self.sf).alias('sf'),
-            pl.Series(self.tf).alias('tf'),
-            pl.Series(self.opto).alias('opto'),
-            pl.Series(self.pattern).alias('pattern')
-        )
-        return df
+        if self._cache_visual_stim_dataframe is None:
+            self._cache_visual_stim_dataframe = pl.DataFrame().with_columns(
+                pl.Series(self.time).alias('time'),
+                pl.Series(self.duration).alias('duration'),
+                pl.Series(self.contrast).alias('contrast'),
+                pl.Series(self.ori).alias('ori'),
+                pl.Series(self.phase).alias('phase'),
+                pl.Series(self.pos_xy).alias('pos'),
+                pl.Series(self.size_xy).alias('size'),
+                pl.Series(self.flick).alias('flick'),
+                pl.Series(self.interpolate).alias('interpolate'),
+                pl.Series(self.mask).alias('mask'),
+                pl.Series(self.sf).alias('sf'),
+                pl.Series(self.tf).alias('tf'),
+                pl.Series(self.opto).alias('opto'),
+                pl.Series(self.pattern).alias('pattern')
+            )
+        return self._cache_visual_stim_dataframe
 
     def get_photo_indicator_dataframe(self) -> pl.DataFrame:
         """
@@ -266,17 +423,18 @@ class StimlogGit(AbstractStimlog):
 
         :return:
         """
-        df = pl.DataFrame().with_columns(
-            pl.Series(self.photo_time).alias('time'),
-            pl.Series(self.photo_state).alias('state'),
-            pl.Series(self.photo_size).alias('size'),
-            pl.Series(self.photo_pos).alias('pos'),
-            pl.Series(self.photo_units).alias('units'),
-            pl.Series(self.photo_mode).alias('mode'),
-            pl.Series(self.photo_frames).alias('frames'),
-            pl.Series(self.photo_enable).alias('enable')
-        )
-        return df
+        if self._cache_photo_indicator_dataframe is None:
+            self._cache_photo_indicator_dataframe = pl.DataFrame().with_columns(
+                pl.Series(self.photo_time).alias('time'),
+                pl.Series(self.photo_state).alias('state'),
+                pl.Series(self.photo_size).alias('size'),
+                pl.Series(self.photo_pos).alias('pos'),
+                pl.Series(self.photo_units).alias('units'),
+                pl.Series(self.photo_mode).alias('mode'),
+                pl.Series(self.photo_frames).alias('frames'),
+                pl.Series(self.photo_enable).alias('enable')
+            )
+        return self._cache_photo_indicator_dataframe
 
     def get_state_machine_dataframe(self) -> pl.DataFrame:
         """
@@ -296,12 +454,13 @@ class StimlogGit(AbstractStimlog):
 
         :return:
         """
-        df = pl.DataFrame().with_columns(
-            pl.Series(it[0] for it in self.log_data[2]).alias('time'),
-            pl.Series(it[1] for it in self.log_data[2]).alias('state'),
-            pl.Series(it[2] for it in self.log_data[2]).alias('prev_state'),
-        )
-        return df
+        if self._cache_state_machine_dataframe is None:
+            self._cache_state_machine_dataframe = pl.DataFrame().with_columns(
+                pl.Series(it[0] for it in self.log_data[2]).alias('time'),
+                pl.Series(it[1] for it in self.log_data[2]).alias('state'),
+                pl.Series(it[2] for it in self.log_data[2]).alias('prev_state'),
+            )
+        return self._cache_state_machine_dataframe
 
     def get_log_dict_dataframe(self) -> pl.DataFrame:
         """
@@ -321,48 +480,16 @@ class StimlogGit(AbstractStimlog):
 
         :return:
         """
-        df = pl.DataFrame().with_columns(
-            pl.Series(it[0] for it in self.log_data[3]).alias('time'),
-            pl.Series(it[1] for it in self.log_data[3]).alias('block_nr'),
-            pl.Series(it[2] for it in self.log_data[3]).alias('trial_nr'),
-            pl.Series(it[3] for it in self.log_data[3]).alias('condition_nr'),
-            pl.Series(it[4] for it in self.log_data[3]).alias('trial_type'),
-        )
+        if self._cache_log_dict_dataframe is None:
+            self._cache_log_dict_dataframe = pl.DataFrame().with_columns(
+                pl.Series(it[0] for it in self.log_data[3]).alias('time'),
+                pl.Series(it[1] for it in self.log_data[3]).alias('block_nr'),
+                pl.Series(it[2] for it in self.log_data[3]).alias('trial_nr'),
+                pl.Series(it[3] for it in self.log_data[3]).alias('condition_nr'),
+                pl.Series(it[4] for it in self.log_data[3]).alias('trial_type'),
+            )
 
-        return df
-
-    def get_column(self,
-                   category: int | str,
-                   field: str,
-                   dtype=float,
-                   mapper: Callable[[Any], Any] | None = None) -> np.ndarray:
-
-        if category in ('Gratings', 'FunctionBased', 'PhotoIndicator'):
-            raise RuntimeError(f'preprocessed log : {category}:{field}')
-
-        if isinstance(category, str):
-            category = self._get_category_code(category)
-
-        field = self._get_field_index(category, field)
-        data = [it[field] for it in self.log_data[category]]
-
-        if mapper is not None:
-            # i.e., operator.itemgetter(1) for tuple statemachine ('States.SHOW_STIM', 2)...
-            data = list(map(mapper, data))
-
-        return np.array(data, dtype=dtype)
-
-    def _get_category_code(self, category: str) -> int:
-        for code, name in self.log_info.items():
-            if name == category:
-                return code
-        raise KeyError('')
-
-    def _get_field_index(self, category: int, field: str) -> int:
-        header = self.log_header[category]
-        if field == 'time':
-            return 0
-        return header.index(field) + 1
+        return self._cache_log_dict_dataframe
 
     @property
     def pos_x(self) -> np.ndarray:
@@ -419,12 +546,12 @@ class StimlogGit(AbstractStimlog):
     def time_offset(self) -> float:
         if self._cache_time_offset is None:
             # noinspection PyTypeChecker
-            self._cache_time_offset = _time_offset(self.riglog_data, self, self.diode_offset)[0]
+            self._cache_time_offset = _time_offset(self.riglog_data, self, self.diode_offset)
         return self._cache_time_offset
 
     def get_stim_pattern(self) -> GratingPattern:
         prot = StimpyProtocol.load(self.stimlog_file.with_suffix('.prot'))
-        log_nr = self.get_column('LogDict', 'condition_nr').astype(int)
+        log_nr = self.get_log_dict_dataframe()['condition_nr'].to_numpy()
 
         t = self.stimulus_segment
         ori = np.array([prot['ori'][n] for n in log_nr])
@@ -450,7 +577,7 @@ class StimlogGit(AbstractStimlog):
 @deprecated_func(remarks='generalized, to sequential offset method')
 def _time_offset(rig: RiglogData,
                  stm: StimlogGit,
-                 diode_offset=True) -> tuple[float, float]:
+                 diode_offset=True) -> float:
     """
     time offset used in the `new stimpy`
     offset time from screen_time .riglog (diode) to .stimlog
@@ -473,7 +600,6 @@ def _time_offset(rig: RiglogData,
             # thus remove first point and add last point manually
             _p_time = np.concatenate((stm.photo_time[1:], np.array([stm.time[-1]])))
             offset_t = screen_time[::2] - _p_time[::2]
-
         except ValueError as e:
             print(f'number of diode pulse and stimulus mismatch from {e}')
             print(f'use the first pulse diff for alignment')
@@ -487,7 +613,7 @@ def _time_offset(rig: RiglogData,
     print(f'time offset between stimlog and riglog: {round(offset_t_avg, 3)}')
     print(f'offset_std: {round(offset_t_std, 3)}')
 
-    return offset_t_avg, offset_t_std
+    return offset_t_avg
 
 
 def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int, pl.DataFrame]:
@@ -561,3 +687,15 @@ def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int
                 pl.DataFrame(log_data[code], schema=['time'] + log_header[code], strict=False)
             for code in log_data
         }
+
+
+def list_value_parser(f: Path, cols: list[str]) -> pl.DataFrame:
+    def list_caster(x, dtype: type = int):
+        try:
+            return [dtype(i) for i in ast.literal_eval(x)]
+        except Exception:
+            return x
+
+    raw = f.read_text()
+    fixed = re.sub(r'(\[.*?\])', r'"\1"', raw)
+    return pl.read_csv(StringIO(fixed)).with_columns(pl.col(c).map_elements(list_caster) for c in cols)
