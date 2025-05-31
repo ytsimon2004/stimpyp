@@ -58,9 +58,9 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
     """frame index"""
     timestamp: np.ndarray
     """time stamp of each frame"""
-    comment_info: dict[str, Any] = {}
-    """# labcams version: 0.2"""
-    time_info: list[str] | None = []
+    comment_info: dict[str, Any]
+    """# information"""
+    time_info: list[str]
     """i.e., # [21-03-02 15:23:08]. Note that time could be duplicated"""
 
     def __init__(self, root: Path,
@@ -95,7 +95,7 @@ class AbstractCamlog(metaclass=abc.ABCMeta):
 
     @classmethod
     @abc.abstractmethod
-    def _parse_comment(cls, content: str) -> None:
+    def _parse_comment(cls, content: str, comment_info, time_info) -> None:
         """update the comment_info attr"""
         pass
 
@@ -135,12 +135,14 @@ class LabCamlog(AbstractCamlog):
             log_file = root
             root = root.parent
 
+        comment_info = {}
+        time_info = []
         log_data = []
 
         with log_file.open() as f:
             for line, content in enumerate(f):
                 content = content.strip()
-                cls._parse_comment(content)
+                cls._parse_comment(content, comment_info, time_info)
                 if not content.startswith('#'):
                     log_data.append(list(map(float, content.split(','))))
 
@@ -149,19 +151,21 @@ class LabCamlog(AbstractCamlog):
             frame_id = data[:, 0].astype(int)
             timestamp = data[:, 1]
 
-        return LabCamlog(root, frame_id, timestamp, cls.comment_info, cls.time_info)
+        return LabCamlog(root, frame_id, timestamp, comment_info, time_info)
 
     @classmethod
-    def _parse_comment(cls, content: str) -> None:
+    def _parse_comment(cls, content: str, comment_info, time_info) -> None:
+
         header_pattern = r'#+ (?!.*?\[)#?([^:\n]+):\s*(.+)'
         m = re.match(header_pattern, content)
+
         if m:
             name, info = m.group(1), m.group(2)
-            cls.comment_info.update({f'{name}': info})
+            comment_info.update({f'{name}': info})
 
         event_pattern = r'# \[(.*?)\]\s*-\s*(.*)'
         if re.match(event_pattern, content):
-            cls.time_info.append(content)
+            time_info.append(content)
 
     def get_camera_time(self, log: AbstractLog,
                         cam_name: CAMERA_TYPE = '1P_cam',
@@ -213,11 +217,12 @@ class PyCamlog(AbstractCamlog):
             raise FileNotFoundError(f'{root} not found')
 
         #
+        comment_info = {}
         log_data = []
         with log_file.open() as f:
             for line, content in enumerate(f):
                 content = content.strip()
-                cls._parse_comment(content)
+                cls._parse_comment(content, comment_info, [])
                 if not content.startswith('#'):
                     log_data.append(list(map(float, content.split(','))))
 
@@ -226,14 +231,14 @@ class PyCamlog(AbstractCamlog):
             frame_id = data[:, 0].astype(int)
             timestamp = data[:, 1]
 
-        return PyCamlog(root, frame_id, timestamp, cls.comment_info)
+        return PyCamlog(root, frame_id, timestamp, comment_info, time_info=[])
 
     @classmethod
-    def _parse_comment(cls, content: str) -> None:
+    def _parse_comment(cls, content: str, comment_info, time_info):
         match = re.match(r'#+ (.+?)\s*:\s*(.+)', content)
         if match:
             name, value = match.group(1), match.group(2)
-            cls.comment_info.update({name: value})
+            comment_info.update({name: value})
 
     def get_camera_time(self, riglog: RiglogData, cam_name: CAMERA_TYPE = '1P_cam'):
         raise NotImplementedError('pycams under dev')

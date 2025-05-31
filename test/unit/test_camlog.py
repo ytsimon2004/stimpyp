@@ -38,7 +38,7 @@ class TestPyCamLog:
         }
 
     def test_time_info(self):
-        assert self.camlog.time_info is None
+        assert self.camlog.time_info == []
 
     def test_dataframe(self):
         print(self.camlog.to_polars())
