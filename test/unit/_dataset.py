@@ -117,8 +117,8 @@ def google_drive_file(file_id: str,
         if output_file.exists() and not invalid_cache:
             yield output_file
         else:
+            output_file.parent.mkdir(exist_ok=True, parents=True)
             url = f"https://drive.google.com/uc?id={file_id}"
-            print(f'{url=}')
             gdown.download(url, str(output_file), quiet=quiet)
             yield output_file
     finally:

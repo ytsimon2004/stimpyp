@@ -54,7 +54,7 @@ class TestStimlogGit:
     # noinspection PyTypeChecker
     @classmethod
     def setup_class(cls):
-        cls.stimlog = load_example_riglog('stimpy-git', stim_type='sftfdir').get_stimlog()
+        cls.stimlog = load_example_riglog('stimpy-git', stim_type='sftfdir').get_stimlog(csv_output=False)
 
     def test_config(self):
         assert self.stimlog.config == {
