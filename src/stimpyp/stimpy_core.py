@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import warnings
 from pathlib import Path
@@ -24,6 +25,8 @@ __all__ = [
     'load_protocol',
     'StimpyProtocol'
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def load_riglog(root_path: PathLike,
@@ -67,6 +70,7 @@ class RiglogData(AbstractLog):
                         3: lambda it: float(it[:-1])
                     },
                 )
+                logger.debug('square bracket were found in riglog file')
             else:
                 riglog = pl.read_csv(filepath, comment_prefix='#').to_numpy()
 
@@ -88,7 +92,7 @@ class RiglogData(AbstractLog):
         elif isinstance(session, tuple):
             t_all = np.array([dy[s].time for s in session])
             t0, t1 = np.min(t_all), np.max(t_all)
-            print(f'get trange from multiple sessions, {session}: t0:{t0}, t1:{t1}')
+            logger.info(f'get trange from multiple sessions, {session}: t0:{t0}, t1:{t1}')
         else:
             raise TypeError('')
 
@@ -112,7 +116,8 @@ class RiglogData(AbstractLog):
             case (None, 'stimpy-git'):
                 from .stimpy_git import StimlogGit
                 self.__stimlog_cache = StimlogGit(
-                    self, self.stimlog_file,
+                    self,
+                    self.stimlog_file,
                     self._reset_mapping,
                     csv_output=csv_output,
                     diode_offset=self._diode_offset
@@ -122,6 +127,7 @@ class RiglogData(AbstractLog):
             case (None, _):
                 raise ValueError(f'unknown version: {self.version}')
 
+        logger.debug(f'init stimlog with {type(self.__stimlog_cache).__name__}')
         return self.__stimlog_cache
 
     def get_protocol(self) -> 'StimpyProtocol':
@@ -221,10 +227,13 @@ class Stimlog(AbstractStimlog):
         match stim_type, self._reset_mapping:
             case ('gratings', None):
                 self._reset_gratings()
+                return None
             case ('functions', None):
                 self._reset_functions()
+                return None
             case (_, mapping) if mapping is not None:
                 self._reset_cust_mapping()
+                return None
             case _:
                 raise NotImplementedError('')
 
@@ -522,19 +531,23 @@ class Stimlog(AbstractStimlog):
                 code = code.strip()
                 value = int(num.strip())
                 self.log_info[value] = code
+            logger.debug(f'Parsed log_info: {self.log_info}')
 
         elif 'VLOG HEADER' in line:
             heading, content = line.split(':')
             self.log_header[10] = content.split(', ')
+            logger.debug(f'Parsed VLOG HEADER: {self.log_header[10]}')
 
         elif 'STATE HEADER' in line:
             heading, content = line.split(': ')
             self.log_header[20] = content.split(',')
+            logger.debug(f'Parsed STATE HEADER: {self.log_header[20]}')
 
         elif 'Commit' in line:
             heading, content = line.split(': ')
             commit = content.strip()
             self.config['commit_hash'] = commit
+            logger.debug(f'Parsed commit hash: {commit}')
 
         elif 'Missed' in line:
             match = re.search(r'\d+', line)
@@ -543,6 +556,7 @@ class Stimlog(AbstractStimlog):
             else:
                 missed = None
             self.config['missed_frames'] = missed
+            logger.debug(f'Parsed missing frame: {missed}')
 
     def get_visual_stim_dataframe(self, stim_only: bool = True) -> pl.DataFrame:
         """
@@ -704,9 +718,11 @@ class Stimlog(AbstractStimlog):
     @property
     def time_offset(self) -> float | np.ndarray:
         if self._cache_time_offset is None:
-            self._cache_time_offset = diode_time_offset(self.riglog_data,
-                                                        self.diode_offset,
-                                                        return_sequential=self._do_sequential_diode_offset)
+            self._cache_time_offset = diode_time_offset(
+                self.riglog_data,
+                self.diode_offset,
+                return_sequential=self._do_sequential_diode_offset
+            )
         return self._cache_time_offset
 
     @property
@@ -793,7 +809,7 @@ def diode_time_offset(rig: RiglogData,
     offset time from screen_time .riglog (diode) to .stimlog
     ** normally stimlog time value are smaller than riglog
 
-    :param rig:
+    :param rig: :class:`RiglogData`
     :param diode_offset: whether correct diode signal
     :param return_sequential: return sequential offset, if False, use mean value across diode pulses
     :param default_offset_value: hardware(rig)-dependent offset value
@@ -815,11 +831,11 @@ def diode_time_offset(rig: RiglogData,
     except DiodeNumberMismatchError as e:
         try:
             first_pulse = _check_if_diode_pulse(rig)
-            warnings.warn(f'{repr(e)}, use the first pulse diff for alignment')
+            logger.warning(f'{repr(e)}, use the first pulse diff for alignment')
             return first_pulse
 
         except DiodeSignalMissingError as e:
-            warnings.warn(f'{repr(e)}, use default value')
+            logger.warning(f'{repr(e)}, use default value')
             return default_offset_value
 
     #
@@ -827,9 +843,9 @@ def diode_time_offset(rig: RiglogData,
     std_t = float(np.std(t))
 
     if not (0 <= avg_t <= 1):
-        warnings.warn(f'{avg_t} too large, might not be properly calculated, check...')
+        logger.error(f'{avg_t} too large, might not be properly calculated, check...')
 
-    print(f'DIODE OFFSET avg: {avg_t}s, std: {std_t}s')
+    logger.info(f'DIODE OFFSET avg: {avg_t}s, std: {std_t}s')
 
     if return_sequential:
         return t

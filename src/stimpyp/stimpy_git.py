@@ -1,4 +1,5 @@
 import ast
+import logging
 import re
 from io import StringIO
 from pathlib import Path
@@ -17,10 +18,10 @@ from .stimulus import GratingPattern
 __all__ = ['StimlogGit',
            'lazy_load_stimlog']
 
+logger = logging.getLogger(__name__)
 
-# TODO add logging for debug during parsing
+
 # TODO check offset issue with true dataset
-
 @final
 class StimlogGit(AbstractStimlog):
     """class for handle the stimlog file for stimpy **github** version
@@ -135,7 +136,7 @@ class StimlogGit(AbstractStimlog):
                     elif self._reset_log_info(info_name, info_value):
                         pass
                     else:
-                        print(f'ignore header line at {line + 1} : {content}')
+                        logger.info(f'ignore header line at {line + 1} : {content}')
 
                 elif content.startswith('### START'):
                     self.config['start_time'] = float(content[9:].strip())
@@ -143,10 +144,11 @@ class StimlogGit(AbstractStimlog):
                     self.config['end_time'] = float(content[7:].strip())
                 elif content.startswith('# Missed') and content.endswith('frames'):
                     self.config['missed_frames'] = int(content.split(' ')[2])
+                    logger.info(f'missed frames: {self.config["missed_frames"]}')
                 elif self._csv_output and content.startswith('#') and content.endswith('added'):  # csv
                     self._csv_added.append(content.split(' ')[1])
                 elif content.startswith('#'):  # other
-                    print(f'ignore header line at {line + 1} : {content}')
+                    logger.info(f'ignore header line at {line + 1} : {content}')
                 else:
                     if not self._csv_output:
                         try:
@@ -155,8 +157,8 @@ class StimlogGit(AbstractStimlog):
                             raise RuntimeError(f'bad format line at {line + 1} : {content}')
 
         if self._csv_output:
+            logger.info(f'stimlog CSV output: {self._csv_added}')
             for log_type in self._csv_added:
-                print(f'find csv: {log_type}')
                 self._reset_csv(log_type)
 
         self.log_data = self._reset_final(log_data)
@@ -196,7 +198,7 @@ class StimlogGit(AbstractStimlog):
         if self.log_info[code] in ('Gratings', 'FunctionBased', 'PhotoIndicator', 'LogDict'):
             value = eval(message)
             if len(self.log_header[code]) != len(value):
-                print(f'log category {code} size mismatched at line {line} : {message}')
+                logger.warning(f'log category {code} size mismatched at line {line} : {message}')
             else:
                 log_data.setdefault(code, []).append((time, *value))
 
@@ -204,14 +206,15 @@ class StimlogGit(AbstractStimlog):
             value = eval(message.replace('<', '("').replace(':', '",').replace('>', ')'))
             value = list(map(str, value))
             if len(self.log_header[code]) != len(value):
-                print(f'log category {code} size mismatched at line {line} : {message}')
+                logger.warning(f'log category {code} size mismatched at line {line} : {message}')
             else:
                 log_data.setdefault(code, []).append((time, *value))
 
         else:
-            print(f'unknown log category : at line {line} : {content}')
+            logger.warning(f'unknown log category : at line {line} : {content}')
 
     def _reset_final(self, log_data: dict[int, list]) -> dict[int, list]:
+        """as attr"""
         remove_code = []
         for code, content in log_data.items():
             if self.log_info[code] in ('Gratings', 'FunctionBased'):
@@ -659,7 +662,7 @@ def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int
                     log_header[code] = header
 
             elif content.startswith('#'):
-                print(f'ignore header line at {line + 1} : {content}')
+                logger.info(f'ignore header line at {line + 1} : {content}')
                 continue
 
             else:  # data
@@ -671,14 +674,14 @@ def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int
                     value = eval(message.replace('<', '("').replace(':', '",').replace('>', ')'))
                     value = list(map(str, value))
                     if len(log_header[code]) != len(value):
-                        print(f'log category {code} size mismatched at line {line} : {message}')
+                        logger.warning(f'log category {code} size mismatched at line {line} : {message}')
                     else:
                         log_data.setdefault(code, []).append((time, *value))
 
                 else:
                     value = eval(message)
                     if len(log_header[code]) != len(value):
-                        print(f'log category {code} size mismatched at line {line} : {message}')
+                        logger.warning(f'log category {code} size mismatched at line {line} : {message}')
                     else:
                         log_data.setdefault(code, []).append((time, *value))
 
@@ -690,6 +693,21 @@ def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int
 
 
 def list_value_parser(f: Path, cols: list[str]) -> pl.DataFrame:
+    """parse list value in csv file, and return a new dataframe
+
+    .. code-block:: text
+
+        1,2,3,[100,100],5
+
+    **TO**
+
+    .. code-block:: text
+
+        1,2,3,"[100,100]",5
+
+
+    """
+
     def list_caster(x, dtype: type = int):
         try:
             return [dtype(i) for i in ast.literal_eval(x)]

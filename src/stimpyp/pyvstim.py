@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 import re
 import warnings
 from pathlib import Path
@@ -16,6 +17,8 @@ from .stimulus import GratingPattern
 __all__ = ['PyVlog',
            'StimlogPyVStim',
            'PyVProtocol']
+
+logger = logging.getLogger(__name__)
 
 
 @final
@@ -42,10 +45,12 @@ class PyVlog(AbstractLog):
                     if 'Version' in line:
                         *_, val = line.split(' ')
                         self.log_config['version'] = val
+                        logger.debug(f'Parsed version: {val}')
 
                     elif 'commit hash' in line:
                         heading, commit = line.split(': ')
                         self.log_config['commit_hash'] = commit
+                        logger.debug(f'Parsed commit: {commit}')
 
                     elif 'CODES' in line:
                         heading, content = line.split(': ')
@@ -55,10 +60,12 @@ class PyVlog(AbstractLog):
                             code = code.strip()
                             value = int(num.strip())
                             self.log_info[value] = code
+                        logger.debug(f'Parsed log info: {self.log_info}')
 
                     elif 'VLOG HEADER' in line:
                         heading, content = line.split(':')
                         self.log_header[10] = content.split(',')
+                        logger.debug(f'Parsed VLOG HEADER: {self.log_header[10]}')
 
                     elif 'RIG CSV' in line:
                         heading, content = line.split(': ')
@@ -68,13 +75,17 @@ class PyVlog(AbstractLog):
                         for i in info.keys():
                             self.log_header[i] = content.split(',')
 
+                        logger.debug(f'Parsed RIG CSV: {self.log_header}')
+
                     elif 'RIG VERSION' in line:
                         heading, content = line.split(': ')
                         self.log_config['rig_version'] = content
+                        logger.debug(f'Parsed rig version: {self.log_config["rig_version"]}')
 
                     elif 'RIG GIT COMMIT HASH' in line:
                         heading, content = line.split(': ')
                         self.log_config['commit_hash'] = content
+                        logger.debug(f'Parsed rig commit: {self.log_config["commit_hash"]}')
 
         self.log_config['source_version'] = 'pyvstim'
 

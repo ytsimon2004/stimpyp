@@ -2,19 +2,15 @@ import functools
 import warnings
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import polars as pl
-
-from ._type import PathLike
 
 __all__ = ['try_casting_number',
            'unfold_stimuli_condition',
            'deprecated_func',
            'printdf',
            'uglob',
-           'cls_hasattr',
-           'plot_scatter_animation']
+           'cls_hasattr']
 
 
 def try_casting_number(value: str, do_eval: bool = False) -> float | int | str:
@@ -222,55 +218,3 @@ def cls_hasattr(cls: type, attr: str) -> bool:
             return True
 
     return False
-
-
-def plot_scatter_animation(x: np.ndarray,
-                           y: np.ndarray,
-                           t: np.ndarray | None = None, *,
-                           step: int | None = None,
-                           size: int = 10,
-                           output: PathLike | None = None,
-                           **kwargs) -> None:
-    r"""
-    Plot xy scatter animation with given time points
-
-    :param x: x loc. `Array[float, T]`
-    :param y: y loc. `Array[float, T]`
-    :param t: time array in sec. `Array[float, T]`
-    :param size: size of the scatter
-    :param step: step run per datapoint
-    :param output: output for animation. i.e., \*.gif
-    :param kwargs: additional arguments passed to ``FuncAnimation()``
-    :return:
-    """
-    from matplotlib.animation import FuncAnimation
-    from matplotlib import pyplot as plt
-
-    fig, _ = plt.subplots()
-
-    def foreach_run(frame: int):
-        fig.clear()
-        ax = fig.add_subplot(111)
-        ax.set_xlim(np.min(x), np.max(x))
-        ax.set_ylim(np.min(y), np.max(y))
-
-        if step is not None:
-            frame *= step
-
-        ax.text(0.02, 0.95, f'Frames = {frame}', transform=ax.transAxes)
-        if t is not None:
-            ax.text(0.02, 0.85, f'Time = {t[frame]:.2f}', transform=ax.transAxes)
-
-        ax.scatter(x[frame], y[frame], s=size)
-
-    ani = FuncAnimation(fig, foreach_run, frames=len(x), **kwargs)
-
-    try:
-        if output is not None:
-            ani.save(output)
-        else:
-            plt.show()
-
-    finally:
-        plt.clf()
-        plt.close('all')

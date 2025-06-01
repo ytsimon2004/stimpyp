@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import logging
 from pathlib import Path
 from typing import Literal, TypeVar, Generic, TypedDict, Any, overload, Iterable
 
@@ -37,6 +38,9 @@ CAMERA_TYPE = Literal['facecam', 'eyecam', '1P_cam']
 R = TypeVar('R', bound='AbstractLog')  # Riglog-Like
 S = TypeVar('S', bound='AbstractStimlog')  # Stimlog-Like
 P = TypeVar('P', bound='AbstractStimProtocol')  # protocol file
+
+#
+logger = logging.getLogger(__name__)
 
 
 # =========== #
@@ -102,7 +106,7 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
             return f[0]
 
         elif len(f) == 0:
-            print(f'no riglog under {root}, try to find in the subfolder...')
+            logger.warning(f'no riglog under {root}, try to find in the subfolder...')
             for s in root.iterdir():
                 if s.is_dir() and s.name.startswith('run0'):
                     try:
@@ -124,9 +128,11 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
                 if '#' in line:
                     if 'RIG VERSION' in line:
                         ret['version'] = float(line.split(': ')[-1])
+                        logger.debug(f'Parsed version: {ret["version"]}')
 
                     elif 'RIG GIT COMMIT HASH' in line:
                         ret['commit_hash'] = line.split(': ')[-1].strip()
+                        logger.debug(f'Parsed commit_hash: {ret["commit_hash"]}')
 
                     elif 'CODES' in line:
                         codes = {}
@@ -139,26 +145,32 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
                             codes[code.lower()] = value
 
                         ret['codes'] = codes
+                        logger.debug(f'Parsed codes: {ret["codes"]}')
 
                     elif 'RIG CSV' in line:
                         content = line.replace('# RIG CSV: ', '').strip()
                         ret['fields'] = tuple(content.split(','))
+                        logger.debug(f'Parsed fields: {ret["fields"]}')
 
                 # 2025 new update log...
                 elif '#' not in line and 'code' in line:
                     ret['fields'] = tuple(line.split(','))
                     self._skip_rows = 1
                     self._with_square_brackets = False
+                    logger.debug(f'github stimpy version parsed: fields: {ret["fields"]}, without square brackets')
 
         # infer
         if 'opto' not in ret['codes']:
             ret['source_version'] = 'stimpy-bit'
+            logger.info(f'Source version inferred by *opto* field: {ret["source_version"]}')
 
         if 'version' not in ret:
             ret['source_version'] = 'stimpy-git'
+            logger.info(f'Source version inferred by config: {ret["source_version"]}')
 
         if 'opto' in ret['codes'] and ret['codes']['opto'] == 15:
             ret['source_version'] = 'pyvstim'
+            logger.info(f'Source version inferred by *opto* field: {ret["source_version"]}')
 
         return ret
 
