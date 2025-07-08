@@ -2,19 +2,27 @@ import logging
 
 from rich.logging import RichHandler
 
-from ._util import *
 from .base import *
 from .camlog import *
 from .event import *
+from .log_config import *
 from .pyvstim import *
 from .session import *
 from .stimpy_core import *
 from .stimpy_git import *
 from .stimulus import *
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    datefmt="[%H:%M:%S]",
-    handlers=[RichHandler()]
-)
+logger = logging.getLogger("stimpyp")
+
+if not logger.hasHandlers():
+    handler = RichHandler()
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="[%H:%M:%S]"
+    )
+    handler.setFormatter(formatter)
+
+    logger.setLevel(logging.INFO)  # default level
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    logger.propagate = False
