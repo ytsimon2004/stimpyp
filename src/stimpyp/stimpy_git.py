@@ -16,7 +16,7 @@ from .stimpy_core import RiglogData, StimpyProtocol
 from .stimulus import GratingPattern
 
 __all__ = ['StimlogGit',
-           'lazy_load_stimlog']
+           'load_stimlog']
 
 logger = logging.getLogger(__name__)
 
@@ -619,7 +619,9 @@ def _time_offset(rig: RiglogData,
     return offset_t_avg
 
 
-def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int, pl.DataFrame]:
+def load_stimlog(file: PathLike, *,
+                 string_key: bool = True,
+                 infer_schema_length: int = 10000) -> dict[str | int, pl.DataFrame]:
     """
     Load directly the stimlog file (without riglog time offset), and parse data as polars dataframes
 
@@ -635,6 +637,7 @@ def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int
 
     :param file: file path for the .stimlog
     :param string_key: show key as str type, otherwise, int type
+    :param infer_schema_length: infer schema length
     :return: Code:DataFrame dictionary
     """
 
@@ -648,7 +651,8 @@ def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int
 
             #
             m = re.match(r'#+ (.+?)\s*:\s*(.+)', content)
-            if m:
+            ex = 'removed' in content
+            if m and not ex:
                 info_name = m.group(1)
                 info_value = m.group(2)
                 try:
@@ -686,8 +690,11 @@ def lazy_load_stimlog(file: PathLike, string_key: bool = True) -> dict[str | int
                         log_data.setdefault(code, []).append((time, *value))
 
         return {
-            (log_info[code] if string_key else code):
-                pl.DataFrame(log_data[code], schema=['time'] + log_header[code], strict=False)
+            (log_info[code] if string_key else code): pl.DataFrame(log_data[code],
+                                                                   schema=['time'] + log_header[code],
+                                                                   strict=False,
+                                                                   infer_schema_length=infer_schema_length,
+                                                                   orient="row")
             for code in log_data
         }
 

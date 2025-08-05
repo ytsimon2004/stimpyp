@@ -814,7 +814,7 @@ def diode_time_offset(rig: RiglogData,
     :param return_sequential: return sequential offset, if False, use mean value across diode pulses
     :param default_offset_value: hardware(rig)-dependent offset value
 
-    :return: tuple of offset average and std value
+    :return: sequential offset value or sequential values
     """
 
     stimlog = rig.get_stimlog()

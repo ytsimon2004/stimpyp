@@ -3,7 +3,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from stimpyp import Stimlog, StimlogGit, StimlogPyVStim, lazy_load_stimlog
+from stimpyp import Stimlog, StimlogGit, StimlogPyVStim, load_stimlog
 from ._dataset import load_example_riglog
 
 
@@ -115,7 +115,7 @@ class TestStimlogGit:
 
     def test_lazy_load(self):
         _local_file = Path('test_data') / 'riglog_stimpy-git_sftfdir' / 'run00_133601_ori_sqr_12dir_2sf_3sf.stimlog'
-        stimlog = lazy_load_stimlog(_local_file)
+        stimlog = load_stimlog(_local_file)
         grating_df = stimlog['Gratings']
 
         assert isinstance(grating_df, pl.DataFrame)
