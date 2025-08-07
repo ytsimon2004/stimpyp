@@ -5,7 +5,7 @@ from typing import Literal
 import numpy as np
 import polars as pl
 
-from neuralib.typing import PathLike
+from stimpyp._type import PathLike
 from stimpyp.event import RigEvent
 from stimpyp.stimpy_core import RiglogData
 from stimpyp.stimpy_git import load_stimlog
