@@ -4,7 +4,7 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Any, final, Iterable
+from typing import Any, final, Iterable, TYPE_CHECKING
 
 import numpy as np
 import polars as pl
@@ -15,6 +15,10 @@ from ._util import unfold_stimuli_condition, try_casting_number, cls_hasattr
 from .base import AbstractLog, AbstractStimlog, AbstractStimProtocol, AbstractStimulusPattern
 from .session import Session, SessionInfo, get_protocol_sessions
 from .stimulus import GratingPattern, FunctionPattern
+
+if TYPE_CHECKING:
+    from .pygame_helper import PyGameStimlog
+
 
 __all__ = [
     'load_riglog',
@@ -129,6 +133,10 @@ class RiglogData(AbstractLog):
 
         logger.debug(f'init stimlog with {type(self.__stimlog_cache).__name__}')
         return self.__stimlog_cache
+
+    def get_stimlog_pygame(self) -> 'PyGameStimlog':
+        from .pygame_helper import PyGameStimlog
+        return PyGameStimlog(self, diode_offset=self._diode_offset)
 
     def get_protocol(self) -> 'StimpyProtocol':
         if self.__prot_cache is None:

@@ -2,6 +2,7 @@ from typing import cast
 
 import attrs
 import numpy as np
+from typing_extensions import Self
 
 __all__ = [
     'RigEvent',
@@ -49,7 +50,7 @@ class RigEvent:
 
         raise RuntimeError('incorrect operation')
 
-    def with_pseudo_value(self, value: float) -> 'RigEvent':
+    def with_pseudo_value(self, value: float) -> Self:
         """pseudo value. i.e., for scatter"""
         t = self.time
         v = np.full_like(t, value, dtype=np.double)
