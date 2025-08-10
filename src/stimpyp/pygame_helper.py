@@ -9,19 +9,19 @@ from stimpyp.event import RigEvent
 from stimpyp.stimpy_core import RiglogData
 from stimpyp.stimpy_git import load_stimlog
 
-__all__ = ['PyGameStimlog']
+__all__ = ['PyGameLinearStimlog']
 
 logger = logging.getLogger(__name__)
 
 DIODE_OFFSET_TYPE = Literal['scalar', 'vector']
 
 
-class PyGameStimlog:
+class PyGameLinearStimlog:
 
     def __init__(self, riglog: RiglogData | None,
                  filepath: PathLike | None = None,
                  diode_offset: bool = True,
-                 offset_method: DIODE_OFFSET_TYPE = 'vector'):
+                 offset_method: DIODE_OFFSET_TYPE = 'scalar'):
         if riglog is None and filepath is None:
             raise TypeError("Either riglog or filepath must be specified")
 
@@ -33,7 +33,7 @@ class PyGameStimlog:
         self.offset_method = offset_method
 
     @property
-    def linear_position_event(self) -> RigEvent:
+    def virtual_position_event(self) -> RigEvent:
         df = self.get_agent_dataframe()
         return RigEvent('position', np.vstack((df['time'], (df['x']))).T)
 
@@ -91,6 +91,33 @@ class PyGameStimlog:
             logger.warning(f'nan observed during pygame task alignment: {n_nan}')
 
         return df.with_columns(pl.Series('time', corrected_time))
+
+    def get_max_virtual_length(self) -> np.ndarray:
+        """`Array[float, L]`"""
+        return self.get_agent_dataframe().filter(pl.col('touch') == 'reward')['x'].to_numpy()
+
+    def get_virtual_length(self, count: int = 1, length: float = 150) -> float:
+        """get actual virtual trial length based on riglog encoder value mapping
+
+        :param count: number of photosensing for each trial for rig encoder
+        :param length: length in cm for each trial for rig encoder
+        """
+        if not self.diode_offset:
+            raise ValueError('diode offset need to be set')
+
+        reward = self.get_agent_dataframe().filter(pl.col('touch') == 'reward')
+
+        rig = self.riglog_data
+        rig_pos = rig.position_event
+        unwarp_enc = rig.unwarp_circular_position()
+
+        # use first lap time
+        mx = rig_pos.time < reward['time'][0]
+        ret = unwarp_enc[mx]
+
+        f, _ = self.riglog_data.get_encoder_factor(count, length)
+
+        return (ret.max() - ret.min()) * f
 
 
 def _diode_offset_scalar(rig: RiglogData, stim: dict[str, pl.DataFrame]) -> float:

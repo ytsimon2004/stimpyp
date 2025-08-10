@@ -323,6 +323,45 @@ class AbstractLog(Generic[S, P], metaclass=abc.ABCMeta):
         """
         pass
 
+    def get_encoder_factor(self, count: int = 1, length: float = 150) -> tuple[float, np.ndarray]:
+        """
+        Get a factor for mapping encoder to actual length in cm
+
+        :param count: number of photosensing for each trial
+        :param length: length in cm for each trial
+        :return:
+        """
+        enc = self.position_event.value
+        enc_t = self.position_event.time
+        lap_t = self.lap_event.time
+
+        ret = np.zeros_like(lap_t)
+        for i, t in enumerate(lap_t):
+            mx = enc_t < t
+            ret[i] = enc[mx][-1]
+
+        if count > 1:
+            ret = ret[:ret.size - (ret.size % count)]
+            ret = ret.reshape(-1, count).sum(axis=1)
+
+        return length / ret.mean(), ret
+
+    def unwarp_circular_position(self, neg_threshold: float = 200) -> np.ndarray:
+        """unwarp circular position to cumulative displacement
+
+        :param neg_threshold: a negative jump larger in magnitude than this is considered a wrap-around
+        """
+        values = np.asarray(self.position_event.value)
+        diff = np.diff(values)
+
+        # amount to add at each step (0 unless a wrap is detected)
+        jumps = np.where(diff < -neg_threshold, (values[:-1] - values[1:]), 0)
+
+        # accumulate total offset
+        offsets = np.r_[0, np.cumsum(jumps)]
+
+        return values + offsets
+
 
 # =========== #
 # Stimlog ABC #

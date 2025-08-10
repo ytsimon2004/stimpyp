@@ -17,7 +17,7 @@ from .session import Session, SessionInfo, get_protocol_sessions
 from .stimulus import GratingPattern, FunctionPattern
 
 if TYPE_CHECKING:
-    from .pygame_helper import PyGameStimlog
+    from .pygame_helper import PyGameLinearStimlog
 
 
 __all__ = [
@@ -134,9 +134,9 @@ class RiglogData(AbstractLog):
         logger.debug(f'init stimlog with {type(self.__stimlog_cache).__name__}')
         return self.__stimlog_cache
 
-    def get_stimlog_pygame(self) -> 'PyGameStimlog':
-        from .pygame_helper import PyGameStimlog
-        return PyGameStimlog(self, diode_offset=self._diode_offset)
+    def get_linear_pygame_stimlog(self, **kwargs) -> 'PyGameLinearStimlog':
+        from .pygame_helper import PyGameLinearStimlog
+        return PyGameLinearStimlog(self, diode_offset=self._diode_offset, **kwargs)
 
     def get_protocol(self) -> 'StimpyProtocol':
         if self.__prot_cache is None:
