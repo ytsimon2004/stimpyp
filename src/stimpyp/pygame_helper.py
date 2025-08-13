@@ -1,8 +1,7 @@
 import logging
-from typing import Literal
-
 import numpy as np
 import polars as pl
+from typing import Literal
 
 from stimpyp._type import PathLike
 from stimpyp.event import RigEvent
@@ -26,11 +25,16 @@ class PyGameLinearStimlog:
             raise TypeError("Either riglog or filepath must be specified")
 
         self.riglog_data = riglog
-        self.stimlog_data = load_stimlog(riglog.stimlog_file)
+
+        if riglog is not None:
+            self.stimlog_data = load_stimlog(riglog.stimlog_file)
+        else:
+            self.stimlog_data = load_stimlog(filepath)
 
         # diode offset
         self.diode_offset = diode_offset
         self.offset_method = offset_method
+        self._offset_time = None
 
     @property
     def virtual_position_event(self) -> RigEvent:
@@ -41,6 +45,12 @@ class PyGameLinearStimlog:
     def screen_event(self) -> RigEvent:
         df = self.get_photo_indicator_dataframe()
         return RigEvent('screen', np.vstack((df['time'], (df['state']))).T)
+
+    @property
+    def offset_time(self) -> float | np.ndarray:
+        if self._offset_time is None:
+            raise valuesError('offset time is not calculated by _offset() yet')
+        return self._offset_time
 
     def get_agent_dataframe(self) -> pl.DataFrame:
         return self._offset(self.stimlog_data['Agent'])
@@ -55,21 +65,32 @@ class PyGameLinearStimlog:
         return self._offset(self.stimlog_data['DispatchStateMachine'])
 
     def _offset(self, df: pl.DataFrame) -> pl.DataFrame:
+
+        if self.riglog_data is None:
+            logger.warning('can not do offset if lack of riglog')
+            return df
+
         if self.diode_offset:
             match self.offset_method:
                 case 'scalar':
-                    dt = _diode_offset_scalar(self.riglog_data, self.stimlog_data)
+                    if self._offset_time is None:
+                        self._offset_time = _diode_offset_scalar(self.riglog_data, self.stimlog_data)
+                    dt = self._offset_time
                     return df.with_columns((pl.col('time') - dt).alias('time'))
                 case 'vector':
-                    return self._trial_base_offset(df)
+                    return self._trial_base_offset(df)[1]
                 case _:
                     raise ValueError('Unknown offset method')
+        else:
+            self._offset_time = 0
+
         return df
 
-    def _trial_base_offset(self, df: pl.DataFrame) -> pl.DataFrame:
+    def _trial_base_offset(self, df: pl.DataFrame) -> tuple[float, pl.DataFrame]:
         event_time = df['time'].to_numpy()
         trial_time = self.stimlog_data['LogDict']['time'][1:].to_numpy().copy()
         dt = _diode_offset_vector(self.riglog_data, self.stimlog_data)
+        self._offset_time = dt
 
         # insert offset for segment before first PhotoIndicator
         dt = np.insert(dt, 0, dt[0])
@@ -90,7 +111,7 @@ class PyGameLinearStimlog:
         if n_nan > 0:
             logger.warning(f'nan observed during pygame task alignment: {n_nan}')
 
-        return df.with_columns(pl.Series('time', corrected_time))
+        return dt, df.with_columns(pl.Series('time', corrected_time))
 
     def get_max_virtual_length(self) -> np.ndarray:
         """`Array[float, L]`"""
