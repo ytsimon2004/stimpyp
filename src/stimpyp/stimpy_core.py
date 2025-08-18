@@ -17,8 +17,7 @@ from .session import Session, SessionInfo, get_protocol_sessions
 from .stimulus import GratingPattern, FunctionPattern
 
 if TYPE_CHECKING:
-    from .pygame_helper import PyGameLinearStimlog
-
+    from .stimpy_pygame import PyGameLinearStimlog
 
 __all__ = [
     'load_riglog',
@@ -56,7 +55,7 @@ class RiglogData(AbstractLog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, log_suffix='.riglog', **kwargs)
 
-        self.__stimlog_cache: AbstractStimlog | None = None
+        self.__stimlog_cache: 'AbstractStimlog | PyGameLinearStimlog | None' = None
         self.__prot_cache: StimpyProtocol | None = None
 
     @classmethod
@@ -134,9 +133,12 @@ class RiglogData(AbstractLog):
         logger.debug(f'init stimlog with {type(self.__stimlog_cache).__name__}')
         return self.__stimlog_cache
 
-    def get_linear_pygame_stimlog(self, **kwargs) -> 'PyGameLinearStimlog':
-        from .pygame_helper import PyGameLinearStimlog
-        return PyGameLinearStimlog(self, diode_offset=self._diode_offset, **kwargs)
+    def get_pygame_stimlog(self, **kwargs) -> 'PyGameLinearStimlog':
+        from .stimpy_pygame import PyGameLinearStimlog
+
+        if self.__stimlog_cache is None:
+            self.__stimlog_cache = PyGameLinearStimlog(self, diode_offset=self._diode_offset, **kwargs)
+        return self.__stimlog_cache
 
     def get_protocol(self) -> 'StimpyProtocol':
         if self.__prot_cache is None:
@@ -229,11 +231,11 @@ class Stimlog(AbstractStimlog):
         try:
             stim_type = self.riglog_data.get_stimulus_type()
         except AttributeError:
-            print(f'no riglog init, for only testing, some methods might causes problem', vtype='warning')
+            logging.warning(f'no riglog init, for only testing, some methods might causes problem')
             return self._reset_gratings()  # testing
 
         match stim_type, self._reset_mapping:
-            case ('gratings', None):
+            case ('gratings' | 'functions', None):  # TODO fix if function based but grating stimlog fields
                 self._reset_gratings()
                 return None
             case ('functions', None):
@@ -497,6 +499,7 @@ class Stimlog(AbstractStimlog):
                         raise ValueError(f'unknown code : {code}')
 
                 except BaseException as e:
+                    logging.error(repr(e))
                     raise RuntimeError(f'line {number}: {line}') from e
 
         self.time = np.array(time)

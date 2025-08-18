@@ -576,7 +576,7 @@ class AbstractStimlog(Generic[R], metaclass=abc.ABCMeta):
     @property
     def n_cycles(self) -> list[int]:
         """Number of cycle for each trial"""
-        raise [1]
+        return [1]
 
     @property
     @abc.abstractmethod

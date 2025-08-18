@@ -133,6 +133,8 @@ class StimlogGit(AbstractStimlog):
                     elif info_name == 'Rig trigger on':
                         info_value = info_value.split(',')
                         self.config['rig_trigger'] = (info_value[0], float(info_value[1]))
+                    elif 'removed' in info_value:
+                        pass
                     elif self._reset_log_info(info_name, info_value):
                         pass
                     else:
@@ -179,6 +181,7 @@ class StimlogGit(AbstractStimlog):
             return False
 
         name, header = info_value.split(' ', maxsplit=1)
+        print(f'{info_value=}, {name=}, {header=}')
         header = eval(header)
         self.log_info[code] = name
         self.log_header[code] = header
@@ -666,7 +669,7 @@ def load_stimlog(file: PathLike, *,
                     log_header[code] = header
 
             elif content.startswith('#'):
-                logger.info(f'ignore header line at {line + 1} : {content}')
+                logger.debug(f'ignore header line at {line + 1} : {content}')
                 continue
 
             else:  # data

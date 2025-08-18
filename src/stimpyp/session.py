@@ -16,11 +16,12 @@ Pipeline
 
 from __future__ import annotations
 
-from pathlib import Path
+import logging
 from typing import NamedTuple, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .base import AbstractStimlog
+    from .stimpy_pygame import PyGameLinearStimlog
 
 import numpy as np
 
@@ -36,39 +37,50 @@ __all__ = [
 ProtocolAlias = str
 Session = str
 
+logger = logging.getLogger(__name__)
 
-# TODO no need stimlog?
+# TODO user friendly
 # TODO check numpy2.0 type
 
-def get_protocol_name(filename: Path | 'AbstractStimlog') -> ProtocolAlias:
+def get_protocol_name(log: 'Path | AbstractStimlog | PyGameLinearStimlog') -> ProtocolAlias:
+    """dynamical protocol name inferred from filename.
+    {visual_open_loop, light_dark_light, grey, vr}
+    """
     from .base import AbstractStimlog
-    if isinstance(filename, AbstractStimlog):
-        filename = filename.stimlog_file
+    from .stimpy_pygame import PyGameLinearStimlog
 
-    filename = filename.stem
+    if isinstance(log, (AbstractStimlog, PyGameLinearStimlog)):
+        filename = log.riglog_data.riglog_file.stem
+    else:
+        filename = log.stem
+
     if 'ori' in filename:
         return 'visual_open_loop'
     elif '_LDL' in filename:
         return 'light_dark_light'
     elif '_black' in filename:
         return 'grey'
+    elif '_linear' in filename:
+        return 'vr'
     else:
-        raise RuntimeError(f'unknown fname >> {filename}')
+        raise ValueError(f'unknown protocol filename:{filename}')
 
 
-def get_protocol_sessions(stim: 'AbstractStimlog') -> list[SessionInfo]:
-    protocol = get_protocol_name(stim)
-    if protocol == 'visual_open_loop':
-        return _get_protocol_sessions_vol(stim)
-    elif protocol == 'light_dark_light':
-        return _get_protocol_sessions_ldl(stim)
-    elif protocol == 'grey':
-        return _get_protocol_sessions_grey(stim)
+def get_protocol_sessions(stim: 'AbstractStimlog | PyGameLinearStimlog') -> list[SessionInfo]:
+    alias = get_protocol_name(stim)
+    if alias == 'visual_open_loop':
+        return _get_protocol_vol(stim)
+    elif alias == 'light_dark_light':
+        return _get_protocol_ldl(stim)
+    elif alias == 'grey':
+        return _get_protocol_grey(stim)
+    elif alias.startswith('vr'):
+        return _get_protocol_vr(stim)
     else:
-        raise RuntimeError(f'unknown protocol >> {protocol}')
+        raise RuntimeError(f'unknown alias: {alias}')
 
 
-def _get_protocol_sessions_vol(stim: 'AbstractStimlog') -> list[SessionInfo]:
+def _get_protocol_vol(stim: 'AbstractStimlog') -> list[SessionInfo]:
     """get session info for visual open loop protocol"""
     t0 = stim.riglog_data.exp_start_time
     t1 = stim.stim_start_time  # diode synced
@@ -82,7 +94,7 @@ def _get_protocol_sessions_vol(stim: 'AbstractStimlog') -> list[SessionInfo]:
     ]
 
 
-def _get_protocol_sessions_ldl(stim: 'AbstractStimlog') -> list[SessionInfo]:
+def _get_protocol_ldl(stim: 'AbstractStimlog') -> list[SessionInfo]:
     # diode signal is no longer reliable, use .prot file value instead
     from .stimpy_core import StimpyProtocol
     prot = StimpyProtocol.load(stim.stimlog_file.with_suffix('.prot'))
@@ -100,10 +112,21 @@ def _get_protocol_sessions_ldl(stim: 'AbstractStimlog') -> list[SessionInfo]:
     ]
 
 
-def _get_protocol_sessions_grey(stim: 'AbstractStimlog') -> list[SessionInfo]:
+def _get_protocol_grey(stim: 'AbstractStimlog') -> list[SessionInfo]:
     t0 = stim.riglog_data.exp_start_time
-    t3 = stim.riglog_data.exp_end_time
-    return [SessionInfo('all', (t0, t3))]
+    t1 = stim.riglog_data.exp_end_time
+    return [SessionInfo('all', (t0, t1))]
+
+
+def _get_protocol_vr(stim: 'PyGameLinearStimlog') -> list[SessionInfo]:
+    t0 = stim.exp_start_time
+    t1 = stim.passive_start_time
+    t2 = stim.exp_end_time
+    return [
+        SessionInfo('close', (t0, t1)),
+        SessionInfo('open', (t1, t2)),
+        SessionInfo('all', (t0, t2))
+    ]
 
 
 # ============ #
@@ -124,11 +147,12 @@ class SessionInfo(NamedTuple):
         :param t: 1d time array
         :return: mask for this session
         """
+        logger.info(f'time mask session: {self.name}, range: {self.time} sec')
         return np.logical_and(self.time[0] < t, t < self.time[1])
 
     def in_range(self, time: np.ndarray,
-                 value: np.ndarray = None,
-                 error=True) -> tuple[Any, Any]:
+                 value: np.ndarray | None = None,
+                 error: bool = True) -> tuple[Any, Any]:
         """
         Get the range (the first and last value) of value array in this session.
 
@@ -152,7 +176,7 @@ class SessionInfo(NamedTuple):
 
     def in_slice(self, time: np.ndarray,
                  value: np.ndarray,
-                 error=True) -> slice:
+                 error: bool = True) -> slice:
         """
         Get the slice of value in this session
 

@@ -6,11 +6,11 @@ from .base import *
 from .camlog import *
 from .event import *
 from .log_config import *
-from .pygame_helper import *
 from .pyvstim import *
 from .session import *
 from .stimpy_core import *
 from .stimpy_git import *
+from .stimpy_pygame import *
 from .stimulus import *
 
 logger = logging.getLogger("stimpyp")

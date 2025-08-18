@@ -1,10 +1,12 @@
 import logging
+from typing import Literal
+
 import numpy as np
 import polars as pl
-from typing import Literal
 
 from stimpyp._type import PathLike
 from stimpyp.event import RigEvent
+from stimpyp.session import Session, SessionInfo, get_protocol_sessions
 from stimpyp.stimpy_core import RiglogData
 from stimpyp.stimpy_git import load_stimlog
 
@@ -37,9 +39,27 @@ class PyGameLinearStimlog:
         self._offset_time = None
 
     @property
+    def exp_start_time(self) -> float:
+        return float(self.riglog_data.dat[0, 2] / 1000)
+
+    @property
+    def passive_start_time(self) -> float:
+        df = self.get_state_machine_dataframe()
+        return df.filter(pl.col('state') == 'RUN_PASSIVE')['time'].min()
+
+    @property
+    def exp_end_time(self) -> float:
+        return float(self.riglog_data.dat[-1, 2] / 1000)
+
+    @property
     def virtual_position_event(self) -> RigEvent:
         df = self.get_agent_dataframe()
         return RigEvent('position', np.vstack((df['time'], (df['x']))).T)
+
+    @property
+    def virtual_lap_event(self) -> RigEvent:
+        df = self.get_log_dict_dataframe()
+        return RigEvent('lap', np.vstack((df['time'], (df['trial_nr']))).T)
 
     @property
     def screen_event(self) -> RigEvent:
@@ -49,8 +69,14 @@ class PyGameLinearStimlog:
     @property
     def offset_time(self) -> float | np.ndarray:
         if self._offset_time is None:
-            raise valuesError('offset time is not calculated by _offset() yet')
+            raise ValueError('offset time is not calculated by _offset() yet')
         return self._offset_time
+
+    def session_trials(self) -> dict[Session, SessionInfo]:
+        return {
+            prot.name: prot
+            for prot in get_protocol_sessions(self)
+        }
 
     def get_agent_dataframe(self) -> pl.DataFrame:
         return self._offset(self.stimlog_data['Agent'])
@@ -59,7 +85,14 @@ class PyGameLinearStimlog:
         return self._offset(self.stimlog_data['PhotoIndicator'])
 
     def get_log_dict_dataframe(self) -> pl.DataFrame:
-        return self._offset(self.stimlog_data['LogDict'])
+        df = self.stimlog_data['LogDict']
+        df = (
+            df.with_columns(pl.col('trial_nr').str.replace('None', '-1').cast(pl.Int64))
+            .filter(pl.col('trial_nr') >= 0)  # remove initial
+            .with_columns(pl.col('trial_nr') + 1)  # match riglog value starting from 1
+        )
+
+        return self._offset(df)
 
     def get_state_machine_dataframe(self) -> pl.DataFrame:
         return self._offset(self.stimlog_data['DispatchStateMachine'])
@@ -126,14 +159,16 @@ class PyGameLinearStimlog:
         if not self.diode_offset:
             raise ValueError('diode offset need to be set')
 
-        reward = self.get_agent_dataframe().filter(pl.col('touch') == 'reward')
 
         rig = self.riglog_data
         rig_pos = rig.position_event
         unwarp_enc = rig.unwarp_circular_position()
 
-        # use first lap time
-        mx = rig_pos.time < reward['time'][0]
+        # use second lap time
+        v_start = self.get_log_dict_dataframe().filter(pl.col('trial_nr') == 2)['time'].item()
+        v_end = self.get_agent_dataframe().filter(pl.col('touch') == 'reward')['time'][1]
+
+        mx = np.logical_and(rig_pos.time >= v_start, rig_pos.time < v_end)
         ret = unwarp_enc[mx]
 
         f, _ = self.riglog_data.get_encoder_factor(count, length)
