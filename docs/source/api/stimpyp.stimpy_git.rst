@@ -8,4 +8,4 @@ stimpyp.stimpy_git
    :nosignatures:
 
    StimlogGit
-   lazy_load_stimlog
+   load_stimlog

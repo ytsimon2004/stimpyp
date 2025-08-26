@@ -55,6 +55,8 @@ API Reference
    api/stimpyp.base
    api/stimpyp.stimpy_core
    api/stimpyp.stimpy_git
+   api/stimpyp.stimpy_pygame
    api/stimpyp.stimulus
    api/stimpyp.camlog
    api/stimpyp.preference
+

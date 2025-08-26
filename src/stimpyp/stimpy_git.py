@@ -181,7 +181,6 @@ class StimlogGit(AbstractStimlog):
             return False
 
         name, header = info_value.split(' ', maxsplit=1)
-        print(f'{info_value=}, {name=}, {header=}')
         header = eval(header)
         self.log_info[code] = name
         self.log_header[code] = header
