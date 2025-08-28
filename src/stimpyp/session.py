@@ -119,14 +119,18 @@ def _get_protocol_grey(stim: 'AbstractStimlog') -> list[SessionInfo]:
 
 
 def _get_protocol_vr(stim: 'PyGameLinearStimlog') -> list[SessionInfo]:
-    t0 = stim.exp_start_time
-    t1 = stim.passive_start_time
-    t2 = stim.exp_end_time
-    return [
-        SessionInfo('close', (t0, t1)),
-        SessionInfo('open', (t1, t2)),
-        SessionInfo('all', (t0, t2))
-    ]
+    try:
+        t0 = stim.exp_start_time
+        t1 = stim.passive_start_time
+        t2 = stim.exp_end_time
+    except AttributeError:
+        raise RuntimeError('stimlog is not a PyGameLinearStimlog, forget to use --vr?')
+    else:
+        return [
+            SessionInfo('close', (t0, t1)),
+            SessionInfo('open', (t1, t2)),
+            SessionInfo('all', (t0, t2))
+        ]
 
 
 # ============ #
