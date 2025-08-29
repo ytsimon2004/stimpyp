@@ -17,7 +17,7 @@ from .session import Session, SessionInfo, get_protocol_sessions
 from .stimulus import GratingPattern, FunctionPattern
 
 if TYPE_CHECKING:
-    from .stimpy_pygame import PyGameLinearStimlog
+    from .stimpy_pygame import PyGameLinearStimlog, WorldMapInfo
 
 __all__ = [
     'load_riglog',
@@ -57,6 +57,7 @@ class RiglogData(AbstractLog):
 
         self.__stimlog_cache: 'AbstractStimlog | PyGameLinearStimlog | None' = None
         self.__prot_cache: StimpyProtocol | None = None
+        self.__worldmap_cache: WorldMapInfo | None = None
 
     @classmethod
     def _cache_asarray(cls, filepath: Path, square_brackets: bool) -> np.ndarray:
@@ -109,6 +110,17 @@ class RiglogData(AbstractLog):
     def stimlog_file(self) -> Path:
         return self.riglog_file.with_suffix('.stimlog')
 
+    @property
+    def worldmap_file(self) -> Path:
+        files = list(self.riglog_file.parent.glob('*.map'))
+        n_files = len(files)
+        if n_files == 1:
+            return files[0]
+        elif n_files == 0:
+            raise FileNotFoundError('')
+        else:
+            raise RuntimeError('multiple map files found')
+
     def get_stimlog(self, csv_output: bool = True) -> AbstractStimlog:
         """
         Initialize the stimlog instance
@@ -134,11 +146,18 @@ class RiglogData(AbstractLog):
         return self.__stimlog_cache
 
     def get_pygame_stimlog(self, **kwargs) -> 'PyGameLinearStimlog':
-        from .stimpy_pygame import PyGameLinearStimlog
-
         if self.__stimlog_cache is None:
+            from .stimpy_pygame import PyGameLinearStimlog
             self.__stimlog_cache = PyGameLinearStimlog(self, diode_offset=self._diode_offset, **kwargs)
+
         return self.__stimlog_cache
+
+    def get_worldmap(self) -> 'WorldMapInfo':
+        if self.__worldmap_cache is None:
+            from .stimpy_pygame import WorldMapInfo
+            self.__worldmap_cache = WorldMapInfo.load_map(self.worldmap_file)
+
+        return self.__worldmap_cache
 
     def get_protocol(self) -> 'StimpyProtocol':
         if self.__prot_cache is None:
