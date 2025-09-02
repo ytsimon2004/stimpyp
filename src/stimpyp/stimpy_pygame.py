@@ -61,6 +61,19 @@ class PyGameLinearStimlog:
     @property
     def virtual_position_event(self) -> RigEvent:
         df = self.get_agent_dataframe()
+
+        # replace x to min position in the track
+        start_x = df.filter(pl.col('touch') == 'start')['x'].min()
+        df = df.with_columns(
+            pl.when(pl.col('x') <= start_x)
+            .then(start_x)
+            .otherwise(pl.col('x'))
+            .alias('x')
+        )
+
+        # map (0 to max)
+        df = df.with_columns(pl.col('x') - start_x)
+
         return RigEvent('position', np.vstack((df['time'], (df['x']))).T)
 
     @property
