@@ -211,6 +211,9 @@ class PyGameLinearStimlog:
         world = self.riglog_data.get_worldmap()
         index_groups = linear_texture_index(world, row, char)
 
+        if len(index_groups) == 0:
+            return []
+
         # to position coordinates
         landmark_groups = []
         for group in index_groups:
@@ -460,6 +463,7 @@ def linear_texture_index(world: WorldMapInfo, row: int, char: str) -> list[list[
     indices = [i for i, s in enumerate(row_str) if s == char]
 
     if not indices:
+        logger.error(f'no char: {char} in row: {row} in the world map')
         return []
 
     # Group consecutive indices

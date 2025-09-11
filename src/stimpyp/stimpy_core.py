@@ -1043,6 +1043,11 @@ class StimpyProtocol(AbstractStimProtocol):
         return self.options.get('endBlankDuration', 5)
 
     @property
+    def reward_duration(self) -> float:
+        """reward zone duration use in the vr branch"""
+        return self.options.get('rewardDuration', 3)
+
+    @property
     def trial_duration(self) -> int:
         dur = self['dur']
         return int(np.sum(dur) + len(dur) * self.blank_duration + self.trial_blank_duration)
