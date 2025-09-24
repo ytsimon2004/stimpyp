@@ -131,6 +131,22 @@ class PyVlog(AbstractLog):
 
     # ===== #
 
+    @property
+    def exp_start_time(self) -> float:
+        """masking vstim code"""
+        dat = self.dat.copy()
+        mx = dat[:, 0] != 10
+        dat = dat[mx]
+        return float(dat[0, 2].copy() / 1000)
+
+    @property
+    def exp_end_time(self) -> float:
+        """masking vstim code"""
+        dat = self.dat.copy()
+        mx = dat[:, 0] != 10
+        dat = dat[mx]
+        return float(dat[-1, 2].copy() / 1000)
+
     def get_stimlog(self) -> 'StimlogPyVStim':
         return StimlogPyVStim(self)
 
