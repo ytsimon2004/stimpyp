@@ -58,9 +58,18 @@ class PyGameLinearStimlog:
     def exp_end_time(self) -> float:
         return float(self.riglog_data.dat[-1, 2] / 1000)
 
-    @property
-    def virtual_position_event(self) -> RigEvent:
+    def virtual_position_event(self, session: Session | None = None) -> RigEvent:
         df = self.get_agent_dataframe()
+
+        match session:
+            case 'close':
+                df = df.filter(pl.col('time') <= self.passive_start_time)
+            case 'open':
+                df = df.filter(pl.col('time') >= self.passive_start_time)
+            case None:
+                pass
+            case _:
+                raise ValueError(f'unknown session {session}')
 
         # replace x to min position in the track
         start_x = df.filter(pl.col('touch') == 'start')['x'].min()
